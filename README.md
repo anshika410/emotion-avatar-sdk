@@ -27,23 +27,64 @@ Animated .webp avatar
 
 ---
 
-## Installation
+## Local Installation (Package Not Yet Published to NPM)
 
-<!-- For locally installation -   clone the repo first then on the same location create another folder for testing  -->
+The package is currently under development and has not been published to NPM yet. To install it locally:
 
-npm install ../emotion-avatar-sdk/anshika.t-avatar-sdk-0.0.2.tgz
+### 1. Build the SDK
 
-```bash
-npm install @anshika.t/avatar-sdk
-```
-
-Then install the required peer dependencies if you don't have them already:
+From the SDK repository:
 
 ```bash
-npm install @huggingface/transformers onnxruntime-web
+npm install
+npm run build
+npm pack
 ```
 
----
+This will generate a package file similar to:
+
+```bash
+anshika-avatar-sdk-0.1.2.tgz
+```
+
+### 2. Install in Your Project
+
+Copy the generated `.tgz` file into your application repository (or note its absolute path), then run:
+
+```bash
+npm install ./anshika-avatar-sdk-0.1.2.tgz
+```
+
+Or install directly from the SDK location:
+
+```bash
+npm install C:/path/to/anshika-avatar-sdk-0.1.2.tgz
+```
+
+### 3. Install Required Peer Dependencies
+
+```bash
+npm install react react-dom @huggingface/transformers onnxruntime-web
+```
+
+### 4. Verify Installation
+
+```bash
+npm ls @anshika/avatar-sdk
+```
+
+Expected output:
+
+```bash
+@anshika/avatar-sdk@0.1.2
+```
+
+The SDK is now ready to be imported into your React application.
+
+```tsx
+import { AnimatedAvatar } from "@anshika/avatar-sdk";
+```
+
 
 ## Consumer app setup
 
