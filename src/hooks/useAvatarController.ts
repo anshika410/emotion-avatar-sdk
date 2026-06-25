@@ -41,6 +41,7 @@ export function useAvatarController({
       if (signals.modelEmotion) {
         switch (signals.modelEmotion) {
           case "joy":
+            return EmotionState.CELEBRATE;
           case "love":
             return EmotionState.ENCOURAGE;
           case "anger":

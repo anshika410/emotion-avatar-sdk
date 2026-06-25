@@ -72,9 +72,9 @@ export function AnimatedAvatar({
   // Analyze AI message for emotion when it changes
   useEffect(() => {
     if (emotionDetection && aiMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(aiMessage).then((detectedEmotion) => {
-        setEmotion(detectedEmotion);
-      });
+      // analyzeEmotion(aiMessage).then((detectedEmotion) => {
+      //   setEmotion(detectedEmotion);
+      // });
     }
   }, [aiMessage, emotionDetection, isInitialized, autoAnimate, analyzeEmotion, setEmotion]);
 
@@ -82,6 +82,8 @@ export function AnimatedAvatar({
   useEffect(() => {
     if (emotionDetection && userMessage && isInitialized && autoAnimate) {
       analyzeEmotion(userMessage).then((detectedEmotion: EmotionState) => {
+        console.log(`[AnimatedAvatar] USER MESSAGE: ${userMessage}`);
+        console.log(`[AnimatedAvatar] DETECTED RESPONSE: ${detectedEmotion}`);  
         setEmotion(detectedEmotion);
       });
     }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { EmotionState } from "../types/emotion";
 
 interface AvatarRendererProps {
@@ -8,7 +8,6 @@ interface AvatarRendererProps {
   customImages?: Partial<Record<EmotionState, string>>;
 }
 
-// Default emotion image mapping
 const DEFAULT_EMOTION_IMAGES: Record<EmotionState, string> = {
   [EmotionState.LISTEN]: "/assets/listening.webp",
   [EmotionState.SPEAK_NEUTRAL]: "/assets/speaking-edited.webp",
@@ -25,16 +24,20 @@ export function AvatarRenderer({
   customImages,
 }: AvatarRendererProps) {
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
-  const videoRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const preloadedImagesRef = useRef<Set<string>>(new Set());
 
-  // Merge custom images with defaults
-  const emotionImageMap = { ...DEFAULT_EMOTION_IMAGES, ...customImages };
+  // FIX 1: useMemo prevents a new object reference on every render,
+  // which was causing Effect 3 to re-run and override the correct image.
+  const emotionImageMap = useMemo(
+    () => ({ ...DEFAULT_EMOTION_IMAGES, ...customImages }),
+    [customImages]
+  );
 
   // Preload all emotion images on mount
   useEffect(() => {
-    const preloadImage = (src: string): Promise<void> => {
-      return new Promise((resolve) => {
+    const preloadImage = (src: string): Promise<void> =>
+      new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
           preloadedImagesRef.current.add(src);
@@ -43,15 +46,12 @@ export function AvatarRenderer({
         img.onerror = () => resolve();
         img.src = src;
       });
-    };
-
-    const allImages = Object.values(emotionImageMap);
-    allImages.forEach((src) => preloadImage(src));
+    Object.values(emotionImageMap).forEach(preloadImage);
   }, [emotionImageMap]);
 
   // Update avatar image when emotion changes
   useEffect(() => {
-    const imgEl = videoRef.current;
+    const imgEl = imgRef.current;
     if (!imgEl) return;
 
     const newSrc = emotionImageMap[emotionState];
@@ -61,29 +61,27 @@ export function AvatarRenderer({
     imgEl.dataset.srcKey = newSrc;
     imgEl.src = newSrc;
 
+    console.log(`[AvatarRenderer] Updating avatar: ${newSrc}, emotion: ${emotionState}`);
+
+    // FIX 2: Restructured if/else so the early return is explicit and the
+    // cleanup path is reachable. The dead code after the else-return is gone.
+    if (preloadedImagesRef.current.has(newSrc)) {
+      setIsVideoSwitching(false);
+      return;
+    }
+
     const handleLoad = () => {
       setIsVideoSwitching(false);
       preloadedImagesRef.current.add(newSrc);
     };
-
-    if (preloadedImagesRef.current.has(newSrc)) {
-      setIsVideoSwitching(false);
-    } else {
-      imgEl.addEventListener("load", handleLoad, { once: true });
-      return () => {
-        imgEl.removeEventListener("load", handleLoad);
-      };
-    }
+    imgEl.addEventListener("load", handleLoad, { once: true });
+    return () => imgEl.removeEventListener("load", handleLoad);
   }, [emotionState, emotionImageMap]);
 
-  // Set initial image on mount
-  useEffect(() => {
-    const imgEl = videoRef.current;
-    if (!imgEl) return;
-    const initialSrc = emotionImageMap[EmotionState.LISTEN];
-    imgEl.dataset.srcKey = initialSrc;
-    imgEl.src = initialSrc;
-  }, [emotionImageMap]);
+  // FIX 3: Removed the separate "initial mount" useEffect entirely.
+  // It ran AFTER the emotion effect and overwrote the correct image every time.
+  // The initial src is now set declaratively on the <img> element below,
+  // which React handles correctly without any effect needed.
 
   const imageStyle: React.CSSProperties = {
     width: `${size}px`,
@@ -98,7 +96,8 @@ export function AvatarRenderer({
 
   return (
     <img
-      ref={videoRef}
+      ref={imgRef}
+      src={emotionImageMap[EmotionState.LISTEN]} // initial src, overridden by effect
       alt="Avatar"
       style={imageStyle}
       className={`avatar-image ${isVideoSwitching ? "loading" : ""}`}

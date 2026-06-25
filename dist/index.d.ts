@@ -1,4 +1,4 @@
-import { JSX } from 'react';
+import { JSX } from 'react/jsx-runtime';
 
 export declare function AnimatedAvatar({ aiMessage, userMessage, emotionDetection, autoAnimate, isSpeaking, isListening, overrideEmotion, onEmotionChange, customImages, size, className, }: AnimatedAvatarProps): JSX.Element;
 

@@ -24,7 +24,8 @@ import { pipeline, env, type TextClassificationOutput } from "@huggingface/trans
 // No custom ort path needed - uses default from HuggingFace Hub
 
 // Disable remote model hosting check (we want HuggingFace Hub CDN)
-env.allowRemoteModels = true;
+env.allowRemoteModels = false;
+env.allowLocalModels = true;
 
 // Cache models in browser IndexedDB
 env.useBrowserCache = true;
@@ -48,13 +49,13 @@ export interface EmotionClassification {
 
 // ──────────────── Model Configuration ────────────────
 
-const MODEL_ID = "Xenova/distilbert-base-uncased-emotion";
+const MODEL_ID = "/emotion-model";
 
 /**
  * Quantization: "q8" = INT8 quantized ONNX (~17 MB, ~60% faster than FP32)
  * Alternatives: "fp32" (full precision), "fp16" (half precision), "q4" (4-bit)
  */
-const QUANTIZATION = "q8";
+const QUANTIZATION = "fp32";
 
 // ──────────────── Singleton Pipeline ────────────────
 
@@ -77,11 +78,14 @@ async function getClassifier(): Promise<ClassificationPipeline> {
     const startMs = performance.now();
 
     try {
+      console.log(`[EmotionClassifier] Using emotion model: ${MODEL_ID} (${QUANTIZATION})`);
+
       const classifier = await pipeline("text-classification", MODEL_ID, {
         dtype: QUANTIZATION,
         device: "wasm",
       });
 
+      
       const elapsed = performance.now() - startMs;
       console.log(`[EmotionClassifier] Model loaded in ${elapsed.toFixed(0)}ms`);
       pipelineInstance = classifier;
@@ -155,6 +159,8 @@ export async function classifyEmotion(text: string): Promise<EmotionClassificati
         topEmotion = label as EmotionLabel;
       }
     }
+
+    console.log(`[EmotionClassifier] topEmotion=${topEmotion}, confidence=${maxScore.toFixed(3)}, inferenceMs=${inferenceMs.toFixed(0)}ms`);
 
     return {
       topEmotion,
