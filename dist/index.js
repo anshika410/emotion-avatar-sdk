@@ -6,19 +6,19 @@ function pe() {
   if (X) return g;
   X = 1;
   var r = /* @__PURE__ */ Symbol.for("react.transitional.element"), t = /* @__PURE__ */ Symbol.for("react.fragment");
-  function i(c, u, l) {
+  function i(l, u, c) {
     var f = null;
-    if (l !== void 0 && (f = "" + l), u.key !== void 0 && (f = "" + u.key), "key" in u) {
-      l = {};
+    if (c !== void 0 && (f = "" + c), u.key !== void 0 && (f = "" + u.key), "key" in u) {
+      c = {};
       for (var d in u)
-        d !== "key" && (l[d] = u[d]);
-    } else l = u;
-    return u = l.ref, {
+        d !== "key" && (c[d] = u[d]);
+    } else c = u;
+    return u = c.ref, {
       $$typeof: r,
-      type: c,
+      type: l,
       key: f,
       ref: u !== void 0 ? u : null,
-      props: l
+      props: c
     };
   }
   return g.Fragment = t, g.jsx = i, g.jsxs = i, g;
@@ -43,7 +43,7 @@ function Te() {
           return "Suspense";
         case ie:
           return "SuspenseList";
-        case le:
+        case ce:
           return "Activity";
       }
       if (typeof e == "object")
@@ -59,7 +59,7 @@ function Te() {
           case se:
             var s = e.render;
             return e = e.displayName, e || (e = s.displayName || s.name || "", e = e !== "" ? "ForwardRef(" + e + ")" : "ForwardRef"), e;
-          case ce:
+          case le:
             return s = e.displayName || null, s !== null ? s : r(e.type) || "Memo";
           case U:
             s = e._payload, e = e._init;
@@ -90,7 +90,7 @@ function Te() {
         ), t(e);
       }
     }
-    function c(e) {
+    function l(e) {
       if (e === v) return "<>";
       if (typeof e == "object" && e !== null && e.$$typeof === U)
         return "<...>";
@@ -105,7 +105,7 @@ function Te() {
       var e = $.A;
       return e === null ? null : e.getOwner();
     }
-    function l() {
+    function c() {
       return Error("react-stack-top-frame");
     }
     function f(e) {
@@ -220,7 +220,7 @@ React keys must be passed directly to JSX without using spread:
     function R(e) {
       return typeof e == "object" && e !== null && e.$$typeof === I;
     }
-    var _ = me, I = /* @__PURE__ */ Symbol.for("react.transitional.element"), x = /* @__PURE__ */ Symbol.for("react.portal"), v = /* @__PURE__ */ Symbol.for("react.fragment"), A = /* @__PURE__ */ Symbol.for("react.strict_mode"), j = /* @__PURE__ */ Symbol.for("react.profiler"), N = /* @__PURE__ */ Symbol.for("react.consumer"), oe = /* @__PURE__ */ Symbol.for("react.context"), se = /* @__PURE__ */ Symbol.for("react.forward_ref"), ae = /* @__PURE__ */ Symbol.for("react.suspense"), ie = /* @__PURE__ */ Symbol.for("react.suspense_list"), ce = /* @__PURE__ */ Symbol.for("react.memo"), U = /* @__PURE__ */ Symbol.for("react.lazy"), le = /* @__PURE__ */ Symbol.for("react.activity"), ue = /* @__PURE__ */ Symbol.for("react.client.reference"), $ = _.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, K = Object.prototype.hasOwnProperty, fe = Array.isArray, Y = console.createTask ? console.createTask : function() {
+    var _ = me, I = /* @__PURE__ */ Symbol.for("react.transitional.element"), x = /* @__PURE__ */ Symbol.for("react.portal"), v = /* @__PURE__ */ Symbol.for("react.fragment"), A = /* @__PURE__ */ Symbol.for("react.strict_mode"), j = /* @__PURE__ */ Symbol.for("react.profiler"), N = /* @__PURE__ */ Symbol.for("react.consumer"), oe = /* @__PURE__ */ Symbol.for("react.context"), se = /* @__PURE__ */ Symbol.for("react.forward_ref"), ae = /* @__PURE__ */ Symbol.for("react.suspense"), ie = /* @__PURE__ */ Symbol.for("react.suspense_list"), le = /* @__PURE__ */ Symbol.for("react.memo"), U = /* @__PURE__ */ Symbol.for("react.lazy"), ce = /* @__PURE__ */ Symbol.for("react.activity"), ue = /* @__PURE__ */ Symbol.for("react.client.reference"), $ = _.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, K = Object.prototype.hasOwnProperty, fe = Array.isArray, Y = console.createTask ? console.createTask : function() {
       return null;
     };
     _ = {
@@ -230,8 +230,8 @@ React keys must be passed directly to JSX without using spread:
     };
     var z, q = {}, H = _.react_stack_bottom_frame.bind(
       _,
-      l
-    )(), J = Y(c(l)), B = {};
+      c
+    )(), J = Y(l(c)), B = {};
     O.Fragment = v, O.jsx = function(e, s, E) {
       var p = 1e4 > $.recentlyCreatedOwnerStacks++;
       return o(
@@ -240,7 +240,7 @@ React keys must be passed directly to JSX without using spread:
         E,
         !1,
         p ? Error("react-stack-top-frame") : H,
-        p ? Y(c(e)) : J
+        p ? Y(l(e)) : J
       );
     }, O.jsxs = function(e, s, E) {
       var p = 1e4 > $.recentlyCreatedOwnerStacks++;
@@ -250,7 +250,7 @@ React keys must be passed directly to JSX without using spread:
         E,
         !0,
         p ? Error("react-stack-top-frame") : H,
-        p ? Y(c(e)) : J
+        p ? Y(l(e)) : J
       );
     };
   })()), O;
@@ -264,9 +264,9 @@ function Re({
   emotionState: r,
   intensity: t,
   size: i,
-  emotionImages: c
+  emotionImages: l
 }) {
-  const [u, l] = C(!1), f = P(null), d = P(/* @__PURE__ */ new Set());
+  const [u, c] = C(!1), f = P(null), d = P(/* @__PURE__ */ new Set());
   w(() => {
     const n = (o) => new Promise((m) => {
       const R = new Image();
@@ -274,26 +274,26 @@ function Re({
         d.current.add(o), m();
       }, R.onerror = () => m(), R.src = o;
     });
-    Object.values(c).forEach((o) => n(o));
-  }, [c]), w(() => {
+    Object.values(l).forEach((o) => n(o));
+  }, [l]), w(() => {
     const n = f.current;
     if (!n) return;
-    const o = c[r];
+    const o = l[r];
     if (!(!o || n.dataset.srcKey === o))
-      if (l(!0), n.dataset.srcKey = o, n.src = o, d.current.has(o))
-        l(!1);
+      if (c(!0), n.dataset.srcKey = o, n.src = o, d.current.has(o))
+        c(!1);
       else {
         const m = () => {
-          l(!1), d.current.add(o);
+          c(!1), d.current.add(o);
         };
         return n.addEventListener("load", m, { once: !0 }), () => n.removeEventListener("load", m);
       }
-  }, [r, c]), w(() => {
+  }, [r, l]), w(() => {
     const n = f.current;
     if (!n) return;
-    const o = c[a.LISTEN];
+    const o = l[a.LISTEN];
     n.dataset.srcKey = o, n.src = o;
-  }, [c]);
+  }, [l]);
   const b = {
     width: `${i}px`,
     height: `${i}px`,
@@ -315,7 +315,7 @@ function Re({
   );
 }
 W.allowLocalModels = !0;
-W.allowRemoteModels = !0;
+W.allowRemoteModels = !1;
 W.useBrowserCache = !0;
 const ee = new URL("../models/onnx/", import.meta.url).href;
 let h = null, S = null, G = !1;
@@ -349,11 +349,11 @@ function Ue() {
 async function ve(r) {
   if (!r?.trim()) return null;
   try {
-    const t = await te(), i = performance.now(), c = await t(r, {
+    const t = await te(), i = performance.now(), l = await t(r, {
       top_k: 13
       // match your model's actual label count
-    }), u = performance.now() - i, l = Array.isArray(c[0]) ? c[0] : c, f = {};
-    for (const n of l)
+    }), u = performance.now() - i, c = Array.isArray(l[0]) ? l[0] : l, f = {};
+    for (const n of c)
       f[n.label] = n.score;
     let d = "neutral", b = 0;
     for (const [n, o] of Object.entries(f))
@@ -441,11 +441,11 @@ const ge = /* @__PURE__ */ new Set([
 function Ce(r) {
   if (!r.trim()) return 0;
   const t = r.toLowerCase().split(/\W+/);
-  let i = 0, c = 0;
-  for (const l of t)
-    ge.has(l) && i++, Oe.has(l) && c++;
-  const u = i + c;
-  return u === 0 ? 0 : (i - c) / u;
+  let i = 0, l = 0;
+  for (const c of t)
+    ge.has(c) && i++, Oe.has(c) && l++;
+  const u = i + l;
+  return u === 0 ? 0 : (i - l) / u;
 }
 const Ie = {
   modelEmotion: null,
@@ -473,7 +473,7 @@ function Le({
   isListening: t = !1,
   onEmotionChange: i
 }) {
-  const [c, u] = C(a.LISTEN), [l, f] = C(0.3), d = V((n) => {
+  const [l, u] = C(a.LISTEN), [c, f] = C(0.3), d = V((n) => {
     u(n), f(0.8), i?.(n, 0.8);
   }, [i]), b = V(async (n) => {
     if (!n.trim()) return a.LISTEN;
@@ -508,8 +508,8 @@ function Le({
   return w(() => {
     r ? (u(a.SPEAK_NEUTRAL), f(0.7)) : t && (u(a.LISTEN), f(0.5));
   }, [r, t]), {
-    emotionState: c,
-    intensity: l,
+    emotionState: l,
+    intensity: c,
     setEmotion: d,
     analyzeEmotion: b
   };
@@ -526,9 +526,9 @@ function $e({
   aiMessage: r = "",
   userMessage: t = "",
   emotionDetection: i = !0,
-  autoAnimate: c = !0,
+  autoAnimate: l = !0,
   isSpeaking: u = !1,
-  isListening: l = !1,
+  isListening: c = !1,
   overrideEmotion: f,
   onEmotionChange: d,
   emotionImages: b,
@@ -538,14 +538,14 @@ function $e({
   const [m, R] = C(!1), _ = {
     ...Pe,
     ...b
-  }, { emotionState: I, intensity: x, setEmotion: v, analyzeEmotion: A } = Le({ isSpeaking: u, isListening: l, onEmotionChange: d });
+  }, { emotionState: I, intensity: x, setEmotion: v, analyzeEmotion: A } = Le({ isSpeaking: u, isListening: c, onEmotionChange: d });
   w(() => {
     R(!0);
   }, []), w(() => {
-    i && r && m && c && A(r).then((N) => v(N));
-  }, [r, i, m, c, A, v]), w(() => {
-    i && t && m && c && A(t).then((N) => v(N));
-  }, [t, i, m, c, A, v]), w(() => {
+    i && r && m && l && A(r).then((N) => v(N));
+  }, [r, i, m, l, A, v]), w(() => {
+    i && t && m && l && A(t).then((N) => v(N));
+  }, [t, i, m, l, A, v]), w(() => {
     f && v(f);
   }, [f, v]);
   const j = {
@@ -572,9 +572,9 @@ function Ye({
   aiMessage: r = "",
   userMessage: t = "",
   isSpeaking: i = !1,
-  isListening: c = !1
+  isListening: l = !1
 }) {
-  const [u, l] = C({
+  const [u, c] = C({
     state: a.LISTEN,
     intensity: 0.3
   }), f = P(0), d = P(!1);
@@ -625,7 +625,7 @@ function Ye({
     if (!r) return;
     const n = performance.now();
     d.current || n - f.current < re || (d.current = !0, f.current = n, b(r).then((o) => {
-      l(o), d.current = !1;
+      c(o), d.current = !1;
     }).catch(() => {
       d.current = !1;
     }));
@@ -633,13 +633,13 @@ function Ye({
     if (!t) return;
     const n = performance.now();
     d.current || n - f.current < re || (d.current = !0, f.current = n, b(t).then((o) => {
-      l(o), d.current = !1;
+      c(o), d.current = !1;
     }).catch(() => {
       d.current = !1;
     }));
   }, [t, b]), w(() => {
-    i ? l({ state: a.SPEAK_NEUTRAL, intensity: 0.7 }) : c && l({ state: a.LISTEN, intensity: 0.5 });
-  }, [i, c]), {
+    i ? c({ state: a.SPEAK_NEUTRAL, intensity: 0.7 }) : l && c({ state: a.LISTEN, intensity: 0.5 });
+  }, [i, l]), {
     emotionState: u.state,
     intensity: u.intensity,
     analyzeText: b

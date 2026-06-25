@@ -7,7 +7,7 @@ import type { EmotionLabel } from "../../types/emotion";
 
 // Allow local bundled model only — block accidental CDN fetch
 env.allowLocalModels = true;
-env.allowRemoteModels = true;
+env.allowRemoteModels = false;
 env.useBrowserCache = true;
 
 // Resolves to dist/models/onnx/ regardless of where the consumer
