@@ -2,39 +2,20 @@ import { useState, useEffect } from "react";
 import { EmotionState } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
 import { useAvatarController } from "../hooks/useAvatarController";
+import { DEFAULT_AVATAR_IMAGES } from "../constants/defaultImages";
 
 export interface AnimatedAvatarProps {
-  /** Text from the AI/LLM for emotion analysis */
   aiMessage?: string;
-  
-  /** Text from the user for emotion analysis */
   userMessage?: string;
-  
-  /** Whether to enable automatic emotion detection */
   emotionDetection?: boolean;
-  
-  /** Whether to enable automatic animations */
   autoAnimate?: boolean;
-  
-  /** Speaking state from parent (TTS status) */
   isSpeaking?: boolean;
-  
-  /** Listening state from parent (STT status) */
   isListening?: boolean;
-  
-  /** Custom emotion state override (for manual control) */
   overrideEmotion?: EmotionState;
-  
-  /** Callback when avatar emotion changes */
   onEmotionChange?: (emotion: EmotionState, intensity: number) => void;
-  
-  /** Custom avatar images (optional) */
-  customImages?: Partial<Record<EmotionState, string>>;
-  
-  /** Size of the avatar in pixels */
+  /** Override individual or all avatar image paths. Merged with DEFAULT_AVATAR_IMAGES. */
+  emotionImages?: Partial<Record<EmotionState, string>>;
   size?: number;
-  
-  /** CSS class name for styling */
   className?: string;
 }
 
@@ -47,51 +28,39 @@ export function AnimatedAvatar({
   isListening = false,
   overrideEmotion,
   onEmotionChange,
-  customImages,
+  emotionImages,
   size = 260,
   className = "",
 }: AnimatedAvatarProps) {
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const {
-    emotionState,
-    intensity,
-    setEmotion,
-    analyzeEmotion,
-  } = useAvatarController({
-    isSpeaking,
-    isListening,
-    onEmotionChange,
-  });
+  // Merge consumer overrides on top of defaults
+  const resolvedImages: Record<EmotionState, string> = {
+    ...DEFAULT_AVATAR_IMAGES,
+    ...emotionImages,
+  };
 
-  // Initialize on mount
+  const { emotionState, intensity, setEmotion, analyzeEmotion } =
+    useAvatarController({ isSpeaking, isListening, onEmotionChange });
+
   useEffect(() => {
     setIsInitialized(true);
   }, []);
 
-  // Analyze AI message for emotion when it changes
   useEffect(() => {
     if (emotionDetection && aiMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(aiMessage).then((detectedEmotion) => {
-        setEmotion(detectedEmotion);
-      });
+      analyzeEmotion(aiMessage).then((detected) => setEmotion(detected));
     }
   }, [aiMessage, emotionDetection, isInitialized, autoAnimate, analyzeEmotion, setEmotion]);
 
-  // Analyze user message for emotion when it changes
   useEffect(() => {
     if (emotionDetection && userMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(userMessage).then((detectedEmotion: EmotionState) => {
-        setEmotion(detectedEmotion);
-      });
+      analyzeEmotion(userMessage).then((detected: EmotionState) => setEmotion(detected));
     }
   }, [userMessage, emotionDetection, isInitialized, autoAnimate, analyzeEmotion, setEmotion]);
 
-  // Handle manual emotion override
   useEffect(() => {
-    if (overrideEmotion) {
-      setEmotion(overrideEmotion);
-    }
+    if (overrideEmotion) setEmotion(overrideEmotion);
   }, [overrideEmotion, setEmotion]);
 
   const containerStyle: React.CSSProperties = {
@@ -110,7 +79,7 @@ export function AnimatedAvatar({
         emotionState={emotionState}
         intensity={intensity}
         size={size}
-        customImages={customImages}
+        emotionImages={resolvedImages}
       />
     </div>
   );

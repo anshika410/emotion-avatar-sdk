@@ -20,7 +20,20 @@ export interface EmotionOutput {
 }
 
 /** The 6 Ekman emotion labels from DistilBERT */
-export type EmotionLabel = "sadness" | "joy" | "love" | "anger" | "fear" | "surprise";
+export type EmotionLabel =
+  | "sadness"
+  | "anger"
+  | "love"
+  | "surprise"
+  | "fear"
+  | "happiness"
+  | "neutral"
+  | "disgust"
+  | "shame"
+  | "guilt"
+  | "confusion"
+  | "desire"
+  | "sarcasm";
 
 /** Text-level signals from final transcripts */
 export interface TextSignals {

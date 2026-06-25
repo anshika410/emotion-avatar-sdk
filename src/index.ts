@@ -14,8 +14,9 @@ export type {
   AvatarControllerReturn,
 } from "./hooks/useAvatarController";
 
+export { EmotionState } from "./types/emotion";
+
 export type {
-  EmotionState,
   EmotionOutput,
   TextSignals,
 } from "./types/emotion";

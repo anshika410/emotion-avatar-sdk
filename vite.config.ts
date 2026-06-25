@@ -2,14 +2,17 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import dts from "vite-plugin-dts";
 import { resolve } from "path";
+import { viteStaticCopy } from "vite-plugin-static-copy"; // add this
 
 export default defineConfig({
   plugins: [
     react(),
-    dts({
-      include: ["src/**/*"],
-      outDir: "dist",
-      rollupTypes: true,
+    dts({ include: ["src/**/*"], outDir: "dist", rollupTypes: true }),
+    viteStaticCopy({
+      targets: [
+        { src: "models", dest: "." },      // → dist/models/
+        { src: "assets", dest: "." },      // → dist/assets/
+      ],
     }),
   ],
   build: {
@@ -21,14 +24,8 @@ export default defineConfig({
     },
     rollupOptions: {
       external: ["react", "react-dom", "@huggingface/transformers", "onnxruntime-web"],
-      output: {
-        globals:{
-          react: "React",
-          "react-dom": "ReactDOM",
-        },
-      },
+      output: { globals: { react: "React", "react-dom": "ReactDOM" } },
     },
     copyPublicDir: false,
   },
-  publicDir: false,
 });

@@ -63,21 +63,22 @@ export function useEmotionController({
 
       if (signals.modelEmotion) {
         switch (signals.modelEmotion) {
-          case "joy":
+          case "happiness":
           case "love":
-            emotionState = EmotionState.ENCOURAGE;
-            intensity = 0.8;
-            break;
+          case "desire":
+            emotionState = EmotionState.ENCOURAGE; intensity = 0.8; break;
           case "anger":
           case "fear":
           case "sadness":
-            emotionState = EmotionState.CAUTION;
-            intensity = 0.7;
-            break;
+          case "disgust":
+          case "shame":
+          case "guilt":
+            emotionState = EmotionState.CAUTION; intensity = 0.7; break;
           case "surprise":
-            emotionState = EmotionState.THINK;
-            intensity = 0.6;
-            break;
+          case "confusion":
+            emotionState = EmotionState.THINK; intensity = 0.6; break;
+          case "sarcasm":
+            emotionState = EmotionState.CAUTION; intensity = 0.4; break;
           default:
             emotionState = EmotionState.LISTEN;
         }
