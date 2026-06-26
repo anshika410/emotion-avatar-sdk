@@ -160,7 +160,7 @@ export async function classifyEmotion(text: string): Promise<EmotionClassificati
       }
     }
 
-    console.log(`[EmotionClassifier] topEmotion=${topEmotion}, confidence=${maxScore.toFixed(3)}, inferenceMs=${inferenceMs.toFixed(0)}ms`);
+    console.log(`[package/services/emotionClassifier.ts]\nUser text: "${text}"\ntopEmotion=${topEmotion}\nconfidence=${maxScore.toFixed(3)}\ninferenceMs=${inferenceMs.toFixed(0)}ms`);
 
     return {
       topEmotion,

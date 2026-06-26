@@ -19,7 +19,6 @@ const DEFAULT_EMOTION_IMAGES: Record<EmotionState, string> = {
 
 export function AvatarRenderer({
   emotionState,
-  intensity,
   size,
   customImages,
 }: AvatarRendererProps) {
@@ -88,9 +87,6 @@ export function AvatarRenderer({
     height: `${size}px`,
     objectFit: "cover",
     borderRadius: "50%",
-    opacity: 0.6 + 0.4 * intensity,
-    transform: `scale(${1 + 0.05 * intensity})`,
-    filter: `brightness(${0.9 + 0.2 * intensity})`,
     transition: "opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease",
   };
 

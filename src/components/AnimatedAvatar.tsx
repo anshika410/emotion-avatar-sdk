@@ -80,10 +80,8 @@ export function AnimatedAvatar({
 
   // Analyze user message for emotion when it changes
   useEffect(() => {
-    if (emotionDetection && userMessage && isInitialized && autoAnimate) {
+    if (emotionDetection && userMessage && isInitialized && autoAnimate && !isSpeaking) {
       analyzeEmotion(userMessage).then((detectedEmotion: EmotionState) => {
-        console.log(`[AnimatedAvatar] USER MESSAGE: ${userMessage}`);
-        console.log(`[AnimatedAvatar] DETECTED RESPONSE: ${detectedEmotion}`);  
         setEmotion(detectedEmotion);
       });
     }

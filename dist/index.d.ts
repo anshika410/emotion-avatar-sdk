@@ -34,7 +34,7 @@ export declare interface AvatarControllerReturn {
     analyzeEmotion: (text: string) => Promise<EmotionState>;
 }
 
-export declare function AvatarRenderer({ emotionState, intensity, size, customImages, }: AvatarRendererProps): JSX.Element;
+export declare function AvatarRenderer({ emotionState, size, customImages, }: AvatarRendererProps): JSX.Element;
 
 declare interface AvatarRendererProps {
     emotionState: EmotionState;
