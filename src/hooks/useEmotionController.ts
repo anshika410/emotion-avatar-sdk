@@ -115,7 +115,8 @@ export function useEmotionController({
     analyzeText(aiMessage).then((result) => {
       setEmotionOutput(result);
       mlInferenceInFlightRef.current = false;
-    }).catch(() => {
+    }).catch((error: unknown) => {
+      console.error("[EmotionController] AI message analysis failed:", error);
       mlInferenceInFlightRef.current = false;
     });
   }, [aiMessage, analyzeText]);
@@ -135,7 +136,8 @@ export function useEmotionController({
     analyzeText(userMessage).then((result) => {
       setEmotionOutput(result);
       mlInferenceInFlightRef.current = false;
-    }).catch(() => {
+    }).catch((error: unknown) => {
+      console.error("[EmotionController] User message analysis failed:", error);
       mlInferenceInFlightRef.current = false;
     });
   }, [userMessage, analyzeText]);

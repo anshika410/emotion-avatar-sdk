@@ -94,13 +94,18 @@ export function extractTextSignals(transcript: string): TextSignals {
 export async function extractTextSignalsWithML(transcript: string): Promise<TextSignals> {
   const base = extractTextSignals(transcript);
 
-  const result = await classifyEmotion(transcript);
-  if (!result) return base;
+  try {
+    const result = await classifyEmotion(transcript);
+    if (!result) return base;
 
-  return {
-    ...base,
-    modelEmotion: result.topEmotion,
-    modelConfidence: result.confidence,
-    emotionScores: result.scores,
-  };
+    return {
+      ...base,
+      modelEmotion: result.topEmotion,
+      modelConfidence: result.confidence,
+      emotionScores: result.scores,
+    };
+  } catch (error) {
+    console.warn("[TextSignals] ML classification failed, returning rule-based signals:", error);
+    return base;
+  }
 }

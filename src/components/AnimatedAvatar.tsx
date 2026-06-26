@@ -49,13 +49,17 @@ export function AnimatedAvatar({
 
   useEffect(() => {
     if (emotionDetection && aiMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(aiMessage).then((detected) => setEmotion(detected));
+      analyzeEmotion(aiMessage)
+        .then((detected) => setEmotion(detected))
+        .catch((error: unknown) => console.error("[AnimatedAvatar] AI emotion analysis failed:", error));
     }
   }, [aiMessage, emotionDetection, isInitialized, autoAnimate, analyzeEmotion, setEmotion]);
 
   useEffect(() => {
     if (emotionDetection && userMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(userMessage).then((detected: EmotionState) => setEmotion(detected));
+      analyzeEmotion(userMessage)
+        .then((detected: EmotionState) => setEmotion(detected))
+        .catch((error: unknown) => console.error("[AnimatedAvatar] User emotion analysis failed:", error));
     }
   }, [userMessage, emotionDetection, isInitialized, autoAnimate, analyzeEmotion, setEmotion]);
 

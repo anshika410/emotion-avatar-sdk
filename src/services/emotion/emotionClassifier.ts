@@ -74,49 +74,49 @@ export async function classifyEmotion(
 ): Promise<EmotionClassification | null> {
   if (!text?.trim()) return null;
 
-  try {
-    const classifier = await getClassifier();
-    const startMs = performance.now();
+  const classifier = await getClassifier();
+  const startMs = performance.now();
 
-    const result = (await classifier(text, {
-      top_k: 13, // match your model's actual label count
-    })) as TextClassificationOutput;
+  const result = (await classifier(text, {
+    top_k: 13, // match your model's actual label count
+  })) as TextClassificationOutput;
 
-    const inferenceMs = performance.now() - startMs;
-    const resultArray = Array.isArray(result[0]) ? result[0] : result;
+  const inferenceMs = performance.now() - startMs;
+  const resultArray = Array.isArray(result[0]) ? result[0] : result;
 
-    const scores: Partial<Record<EmotionLabel, number>> = {};
-    for (const item of resultArray as Array<{ label: EmotionLabel; score: number }>) {
-      scores[item.label] = item.score;
-    }
-
-    let topEmotion: EmotionLabel = "neutral";
-    let maxScore = 0;
-    for (const [label, score] of Object.entries(scores)) {
-      if ((score ?? 0) > maxScore) {
-        maxScore = score ?? 0;
-        topEmotion = label as EmotionLabel;
-      }
-    }
-
-    return {
-      topEmotion,
-      confidence: maxScore,
-      scores: scores as Record<EmotionLabel, number>,
-      inferenceMs,
-    };
-  } catch (error) {
-    console.error("[EmotionClassifier] Inference error:", error);
-    return null;
+  const scores: Partial<Record<EmotionLabel, number>> = {};
+  for (const item of resultArray as Array<{ label: EmotionLabel; score: number }>) {
+    scores[item.label] = item.score;
   }
+
+  let topEmotion: EmotionLabel = "neutral";
+  let maxScore = 0;
+  for (const [label, score] of Object.entries(scores)) {
+    if ((score ?? 0) > maxScore) {
+      maxScore = score ?? 0;
+      topEmotion = label as EmotionLabel;
+    }
+  }
+
+  return {
+    topEmotion,
+    confidence: maxScore,
+    scores: scores as Record<EmotionLabel, number>,
+    inferenceMs,
+  };
 }
 
 export async function disposeEmotionClassifier(): Promise<void> {
   if (pipelineInstance) {
-    await pipelineInstance.dispose();
-    pipelineInstance = null;
-    loadPromise = null;
-    isLoaded = false;
-    console.log("[EmotionClassifier] Model disposed");
+    try {
+      await pipelineInstance.dispose();
+    } catch (error) {
+      console.error("[EmotionClassifier] Error during model disposal:", error);
+    } finally {
+      pipelineInstance = null;
+      loadPromise = null;
+      isLoaded = false;
+      console.log("[EmotionClassifier] Model disposed");
+    }
   }
 }

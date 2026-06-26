@@ -24,7 +24,10 @@ export function AvatarRenderer({
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => { preloadedImagesRef.current.add(src); resolve(); };
-        img.onerror = () => resolve();
+        img.onerror = () => {
+          console.warn(`[AvatarRenderer] Failed to preload image: ${src}`);
+          resolve();
+        };
         img.src = src;
       });
     };
