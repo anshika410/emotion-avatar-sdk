@@ -6,9 +6,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { EmotionState, type EmotionOutput, type TextSignals } from "../types/emotion";
+import { type EmotionOutput } from "../types/emotion";
 import { extractTextSignalsWithML } from "../services/emotion/textSignals";
 import { warmUpEmotionClassifier, disposeEmotionClassifier } from "../services/emotion/emotionClassifier";
+import {
+  mapSignalsToEmotionOutput,
+  getSpeakingListeningState,
+  IDLE_EMOTION_OUTPUT,
+} from "../utils/emotionMapping";
 
 /** Minimum interval between ML inference calls (ms) */
 const ML_DEBOUNCE_MS = 1000;
@@ -30,10 +35,7 @@ export function useEmotionController({
   isSpeaking = false,
   isListening = false,
 }: UseEmotionControllerProps) {
-  const [emotionOutput, setEmotionOutput] = useState<EmotionOutput>({
-    state: EmotionState.LISTEN,
-    intensity: 0.3,
-  });
+  const [emotionOutput, setEmotionOutput] = useState<EmotionOutput>(IDLE_EMOTION_OUTPUT);
 
   const lastMLInferenceRef = useRef(0);
   const mlInferenceInFlightRef = useRef(false);
@@ -50,53 +52,14 @@ export function useEmotionController({
 
   // Analyze emotion from text
   const analyzeText = useCallback(async (text: string): Promise<EmotionOutput> => {
-    if (!text.trim()) {
-      return { state: EmotionState.LISTEN, intensity: 0.3 };
-    }
+    if (!text.trim()) return IDLE_EMOTION_OUTPUT;
 
     try {
-      const signals: TextSignals = await extractTextSignalsWithML(text);
-      
-      // Map ML emotion to avatar emotion state
-      let emotionState = EmotionState.LISTEN;
-      let intensity = 0.5;
-
-      if (signals.modelEmotion) {
-        switch (signals.modelEmotion) {
-          case "happiness":
-          case "love":
-          case "desire":
-            emotionState = EmotionState.ENCOURAGE; intensity = 0.8; break;
-          case "anger":
-          case "fear":
-          case "sadness":
-          case "disgust":
-          case "shame":
-          case "guilt":
-            emotionState = EmotionState.CAUTION; intensity = 0.7; break;
-          case "surprise":
-          case "confusion":
-            emotionState = EmotionState.THINK; intensity = 0.6; break;
-          case "sarcasm":
-            emotionState = EmotionState.CAUTION; intensity = 0.4; break;
-          default:
-            emotionState = EmotionState.LISTEN;
-        }
-      } else {
-        // Fallback to sentiment valence
-        if (signals.sentimentValence > 0.3) {
-          emotionState = EmotionState.ENCOURAGE;
-          intensity = 0.7;
-        } else if (signals.sentimentValence < -0.3) {
-          emotionState = EmotionState.CAUTION;
-          intensity = 0.6;
-        }
-      }
-
-      return { state: emotionState, intensity };
+      const signals = await extractTextSignalsWithML(text);
+      return mapSignalsToEmotionOutput(signals);
     } catch (error) {
       console.warn("[EmotionController] Emotion analysis failed:", error);
-      return { state: EmotionState.LISTEN, intensity: 0.3 };
+      return IDLE_EMOTION_OUTPUT;
     }
   }, []);
 
@@ -142,10 +105,9 @@ export function useEmotionController({
 
   // Update emotion based on speaking/listening state
   useEffect(() => {
-    if (isSpeaking) {
-      setEmotionOutput({ state: EmotionState.SPEAK_NEUTRAL, intensity: 0.7 });
-    } else if (isListening) {
-      setEmotionOutput({ state: EmotionState.LISTEN, intensity: 0.5 });
+    const override = getSpeakingListeningState(isSpeaking, isListening);
+    if (override) {
+      setEmotionOutput(override);
     }
   }, [isSpeaking, isListening]);
 

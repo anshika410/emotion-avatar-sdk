@@ -33,3 +33,12 @@ export {
   extractTextSignals,
   extractTextSignalsWithML,
 } from "./services/emotion/textSignals";
+
+// Shared utilities
+export {
+  mapModelEmotionToState,
+  mapValenceToState,
+  mapSignalsToEmotionOutput,
+  getSpeakingListeningState,
+  IDLE_EMOTION_OUTPUT,
+} from "./utils/emotionMapping";

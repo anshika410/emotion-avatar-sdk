@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect} from "react";
+import { useState, useCallback, useEffect } from "react";
 import { EmotionState } from "../types/emotion";
 import { extractTextSignalsWithML } from "../services/emotion/textSignals";
+import { mapSignalsToEmotionOutput, getSpeakingListeningState } from "../utils/emotionMapping";
 
 export interface UseAvatarControllerProps {
   isSpeaking?: boolean;
@@ -31,54 +32,25 @@ export function useAvatarController({
   }, [onEmotionChange]);
 
   // Analyze emotion from text
-const analyzeEmotion = useCallback(async (text: string): Promise<EmotionState> => {
-  if (!text.trim()) return EmotionState.LISTEN;
+  const analyzeEmotion = useCallback(async (text: string): Promise<EmotionState> => {
+    if (!text.trim()) return EmotionState.LISTEN;
 
-  try {
-    const signals = await extractTextSignalsWithML(text);
-
-    if (signals.modelEmotion) {
-      switch (signals.modelEmotion) {
-        case "happiness":
-        case "love":
-        case "desire":
-          return EmotionState.ENCOURAGE;
-        case "anger":
-        case "fear":
-        case "sadness":
-        case "disgust":
-        case "shame":
-        case "guilt":
-          return EmotionState.CAUTION;
-        case "surprise":
-        case "confusion":
-          return EmotionState.THINK;
-        case "sarcasm":
-          return EmotionState.CAUTION;
-        default:
-          return EmotionState.LISTEN;
-      }
+    try {
+      const signals = await extractTextSignalsWithML(text);
+      const output = mapSignalsToEmotionOutput(signals);
+      return output.state;
+    } catch (error) {
+      console.warn("[useAvatarController] Emotion analysis failed:", error);
+      return EmotionState.LISTEN;
     }
-
-    // Fallback to sentiment valence
-    if (signals.sentimentValence > 0.3) return EmotionState.ENCOURAGE;
-    if (signals.sentimentValence < -0.3) return EmotionState.CAUTION;
-
-    return EmotionState.LISTEN;
-  } catch (error) {
-    console.warn("[useAvatarController] Emotion analysis failed:", error);
-    return EmotionState.LISTEN;
-  }
-}, []);
+  }, []);
 
   // Update emotion based on speaking/listening state
   useEffect(() => {
-    if (isSpeaking) {
-      setEmotionState(EmotionState.SPEAK_NEUTRAL);
-      setIntensity(0.7);
-    } else if (isListening) {
-      setEmotionState(EmotionState.LISTEN);
-      setIntensity(0.5);
+    const override = getSpeakingListeningState(isSpeaking, isListening);
+    if (override) {
+      setEmotionState(override.state);
+      setIntensity(override.intensity);
     }
   }, [isSpeaking, isListening]);
 
