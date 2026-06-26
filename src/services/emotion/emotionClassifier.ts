@@ -10,9 +10,10 @@ env.allowLocalModels = true;
 env.allowRemoteModels = false;
 env.useBrowserCache = true;
 
-// Resolves to dist/models/onnx/ regardless of where the consumer
-// installs the package — this is the key fix
 const MODEL_PATH = new URL("../models/onnx/", import.meta.url).href;
+
+// BERT max-position-embeddings = 512 tokens; ~2000 chars is a safe upper bound
+const MAX_INPUT_LENGTH = 2000;
 
 export interface EmotionClassification {
   topEmotion: EmotionLabel;
@@ -32,8 +33,6 @@ async function getClassifier(): Promise<ClassificationPipeline> {
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
-    console.log("[EmotionClassifier] Loading bundled model from:", MODEL_PATH);
-    const startMs = performance.now();
     try {
       const classifier = await pipeline(
         "text-classification",
@@ -43,14 +42,10 @@ async function getClassifier(): Promise<ClassificationPipeline> {
           dtype: "q8",
         }
       );
-      console.log(
-        `[EmotionClassifier] Model loaded in ${(performance.now() - startMs).toFixed(0)}ms`
-      );
       pipelineInstance = classifier;
       isLoaded = true;
       return classifier;
     } catch (error) {
-      console.error("[EmotionClassifier] Failed to load model:", error);
       loadPromise = null;
       throw error;
     }
@@ -62,7 +57,6 @@ async function getClassifier(): Promise<ClassificationPipeline> {
 export async function warmUpEmotionClassifier(): Promise<void> {
   const classifier = await getClassifier();
   await classifier("hello world");
-  console.log("[EmotionClassifier] Warm-up complete");
 }
 
 export function isEmotionClassifierReady(): boolean {
@@ -74,11 +68,15 @@ export async function classifyEmotion(
 ): Promise<EmotionClassification | null> {
   if (!text?.trim()) return null;
 
+  const truncated = text.length > MAX_INPUT_LENGTH
+    ? text.slice(0, MAX_INPUT_LENGTH)
+    : text;
+
   try {
     const classifier = await getClassifier();
     const startMs = performance.now();
 
-    const result = (await classifier(text, {
+    const result = (await classifier(truncated, {
       top_k: 13, // match your model's actual label count
     })) as TextClassificationOutput;
 
@@ -105,8 +103,7 @@ export async function classifyEmotion(
       scores: scores as Record<EmotionLabel, number>,
       inferenceMs,
     };
-  } catch (error) {
-    console.error("[EmotionClassifier] Inference error:", error);
+  } catch {
     return null;
   }
 }
@@ -117,6 +114,5 @@ export async function disposeEmotionClassifier(): Promise<void> {
     pipelineInstance = null;
     loadPromise = null;
     isLoaded = false;
-    console.log("[EmotionClassifier] Model disposed");
   }
 }

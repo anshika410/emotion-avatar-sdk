@@ -40,9 +40,9 @@ export function useEmotionController({
 
   // Warm up ML emotion classifier on mount
   useEffect(() => {
-    warmUpEmotionClassifier().catch((err: unknown) =>
-      console.warn("[EmotionController] ML classifier warm-up failed (will use rule-based fallback):", err)
-    );
+    warmUpEmotionClassifier().catch(() => {
+      // warm-up failed; rule-based fallback will be used
+    });
     return () => {
       disposeEmotionClassifier();
     };
@@ -94,8 +94,7 @@ export function useEmotionController({
       }
 
       return { state: emotionState, intensity };
-    } catch (error) {
-      console.warn("[EmotionController] Emotion analysis failed:", error);
+    } catch {
       return { state: EmotionState.LISTEN, intensity: 0.3 };
     }
   }, []);

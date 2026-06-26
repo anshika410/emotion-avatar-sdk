@@ -65,8 +65,7 @@ const analyzeEmotion = useCallback(async (text: string): Promise<EmotionState> =
     if (signals.sentimentValence < -0.3) return EmotionState.CAUTION;
 
     return EmotionState.LISTEN;
-  } catch (error) {
-    console.warn("[useAvatarController] Emotion analysis failed:", error);
+  } catch {
     return EmotionState.LISTEN;
   }
 }, []);
