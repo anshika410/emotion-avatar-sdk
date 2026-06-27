@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiLock, FiMail, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
@@ -12,8 +12,7 @@ export default function AdminLogin() {
   const navigate = useNavigate();
 
   if (isAuthenticated) {
-    navigate('/admin/dashboard');
-    return null;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   const handleSubmit = (e: React.FormEvent) => {

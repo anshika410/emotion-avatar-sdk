@@ -73,7 +73,7 @@ export default function DashboardOverview() {
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <h3 className="font-bold text-gray-800 mb-4">Top Students</h3>
           <div className="space-y-3">
-            {students
+            {[...students]
               .sort((a, b) => b.tournaments.length - a.tournaments.length)
               .slice(0, 5)
               .map((student) => (

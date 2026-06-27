@@ -208,16 +208,22 @@ export default function ContactPage() {
                   <FiMapPin className="text-saffron" /> Academy Location
                 </h3>
                 <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-                  <iframe
-                    src={contactInfo.mapEmbedUrl}
-                    width="100%"
-                    height="250"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Academy Location"
-                  />
+                  {contactInfo.mapEmbedUrl && contactInfo.mapEmbedUrl.startsWith('https://www.google.com/maps') ? (
+                    <iframe
+                      src={contactInfo.mapEmbedUrl}
+                      width="100%"
+                      height="250"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Academy Location"
+                    />
+                  ) : (
+                    <div className="w-full h-[250px] bg-gray-100 flex items-center justify-center text-gray-400">
+                      <FiMapPin size={32} />
+                    </div>
+                  )}
                   <div className="p-4">
                     <p className="text-gray-600 text-sm mb-3">{contactInfo.address}</p>
                     <a

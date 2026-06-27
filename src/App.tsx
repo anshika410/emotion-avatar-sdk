@@ -9,6 +9,7 @@ import FacilitiesPage from './pages/public/FacilitiesPage';
 import TeamPage from './pages/public/TeamPage';
 import BlogPage from './pages/public/BlogPage';
 import ContactPage from './pages/public/ContactPage';
+import GalleryPage from './pages/public/GalleryPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import DashboardOverview from './pages/admin/DashboardOverview';
 import AdminHome from './pages/admin/AdminHome';
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/team" element={<TeamPage />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
       </Route>
 
       <Route path="/admin" element={<AdminLogin />} />

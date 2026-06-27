@@ -15,6 +15,15 @@ function getYouTubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 export default function MediaRenderer({
   src,
   alt = '',
@@ -22,7 +31,7 @@ export default function MediaRenderer({
   placeholderText = 'Image',
   type = 'image',
 }: MediaRendererProps) {
-  if (!src) {
+  if (!src || !isSafeUrl(src)) {
     return <PlaceholderImage text={placeholderText} className={className} />;
   }
 

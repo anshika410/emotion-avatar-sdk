@@ -71,7 +71,7 @@ export default function GalleryPreview() {
           className="text-center mt-10"
         >
           <Link
-            to="/blog"
+            to="/gallery"
             className="inline-flex items-center gap-2 px-6 py-3 bg-royal-blue text-white rounded-lg hover:bg-royal-blue-dark transition-colors font-medium"
           >
             View Full Gallery <FiArrowRight />
