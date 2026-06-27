@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-saffron: #FF9933;
+  --color-saffron-light: #FFB366;
+  --color-saffron-dark: #E68A2E;
+  --color-india-green: #138808;
+  --color-india-green-light: #1AAF0A;
+  --color-india-green-dark: #0E6606;
+  --color-royal-blue: #1A3A8A;
+  --color-royal-blue-light: #2550B2;
+  --color-royal-blue-dark: #0F2460;
+  --color-navy: #0A1628;
+  --color-cream: #FFF8F0;
+  --color-gold: #D4AF37;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-royal-blue);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-royal-blue-dark);
+  }
+}
+
+@layer components {
+  .gradient-saffron {
+    background: linear-gradient(135deg, var(--color-saffron), var(--color-saffron-light));
+  }
+
+  .gradient-blue {
+    background: linear-gradient(135deg, var(--color-royal-blue), var(--color-royal-blue-light));
+  }
+
+  .gradient-hero {
+    background: linear-gradient(135deg, var(--color-royal-blue-dark) 0%, var(--color-royal-blue) 40%, var(--color-saffron-dark) 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-saffron), var(--color-royal-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
