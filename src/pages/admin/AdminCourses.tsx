@@ -55,13 +55,13 @@ export default function AdminCourses() {
     const sorted = [...courses].sort((a, b) => a.order - b.order);
     const idx = sorted.findIndex((c) => c.id === id);
     if (direction === 'up' && idx > 0) {
-      const temp = sorted[idx].order;
-      sorted[idx].order = sorted[idx - 1].order;
-      sorted[idx - 1].order = temp;
+      const tempOrder = sorted[idx].order;
+      sorted[idx] = { ...sorted[idx], order: sorted[idx - 1].order };
+      sorted[idx - 1] = { ...sorted[idx - 1], order: tempOrder };
     } else if (direction === 'down' && idx < sorted.length - 1) {
-      const temp = sorted[idx].order;
-      sorted[idx].order = sorted[idx + 1].order;
-      sorted[idx + 1].order = temp;
+      const tempOrder = sorted[idx].order;
+      sorted[idx] = { ...sorted[idx], order: sorted[idx + 1].order };
+      sorted[idx + 1] = { ...sorted[idx + 1], order: tempOrder };
     }
     setCourses([...sorted]);
   };

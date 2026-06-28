@@ -5,6 +5,13 @@ import { useData } from '../../context/DataContext';
 import PlaceholderImage from '../../components/ui/PlaceholderImage';
 import type { GalleryItem } from '../../types';
 
+function getYouTubeEmbedUrl(url: string): string {
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  return match ? `https://www.youtube.com/embed/${match[1]}` : url;
+}
+
 export default function GalleryPage() {
   const { gallery } = useData();
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
@@ -141,7 +148,7 @@ export default function GalleryPage() {
                   selectedItem.url.includes('youtube.com') ||
                   selectedItem.url.includes('youtu.be') ? (
                   <iframe
-                    src={selectedItem.url}
+                    src={getYouTubeEmbedUrl(selectedItem.url)}
                     title={selectedItem.caption}
                     className="w-full aspect-video rounded-xl"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

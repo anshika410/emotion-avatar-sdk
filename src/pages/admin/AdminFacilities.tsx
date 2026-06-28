@@ -37,8 +37,15 @@ export default function AdminFacilities() {
   const moveOrder = (id: string, dir: 'up' | 'down') => {
     const s = [...facilities].sort((a, b) => a.order - b.order);
     const idx = s.findIndex((f) => f.id === id);
-    if (dir === 'up' && idx > 0) { const t = s[idx].order; s[idx].order = s[idx - 1].order; s[idx - 1].order = t; }
-    else if (dir === 'down' && idx < s.length - 1) { const t = s[idx].order; s[idx].order = s[idx + 1].order; s[idx + 1].order = t; }
+    if (dir === 'up' && idx > 0) {
+      const t = s[idx].order;
+      s[idx] = { ...s[idx], order: s[idx - 1].order };
+      s[idx - 1] = { ...s[idx - 1], order: t };
+    } else if (dir === 'down' && idx < s.length - 1) {
+      const t = s[idx].order;
+      s[idx] = { ...s[idx], order: s[idx + 1].order };
+      s[idx + 1] = { ...s[idx + 1], order: t };
+    }
     setFacilities([...s]);
   };
 
