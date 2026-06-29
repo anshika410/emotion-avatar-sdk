@@ -6,13 +6,13 @@ import {
 import type { EmotionLabel } from "../../types/emotion";
 
 // Allow local bundled model only — block accidental CDN fetch
-env.allowLocalModels = true;
-env.allowRemoteModels = false;
+env.allowRemoteModels = true;
+env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 // Resolves to dist/models/onnx/ regardless of where the consumer
 // installs the package — this is the key fix
-const MODEL_PATH = new URL("../models/onnx/", import.meta.url).href;
+const MODEL_PATH = "navgurukul-ai/realtime-avatar-animation";
 
 export interface EmotionClassification {
   topEmotion: EmotionLabel;
@@ -21,7 +21,9 @@ export interface EmotionClassification {
   inferenceMs: number;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ClassificationPipeline = Awaited<ReturnType<typeof pipeline<"text-classification">>>;
+type ClassificationPipeline = Awaited<
+  ReturnType<typeof pipeline<"text-classification">>
+>;
 
 let pipelineInstance: ClassificationPipeline | null = null;
 let loadPromise: Promise<ClassificationPipeline> | null = null;
@@ -35,16 +37,12 @@ async function getClassifier(): Promise<ClassificationPipeline> {
     console.log("[EmotionClassifier] Loading bundled model from:", MODEL_PATH);
     const startMs = performance.now();
     try {
-      const classifier = await pipeline(
-        "text-classification",
-        MODEL_PATH,
-        {
-          device: "wasm",
-          dtype: "q8",
-        }
-      );
+      const classifier = await pipeline("text-classification", MODEL_PATH, {
+        device: "wasm",
+        dtype: "fp32",
+      });
       console.log(
-        `[EmotionClassifier] Model loaded in ${(performance.now() - startMs).toFixed(0)}ms`
+        `[EmotionClassifier] Model loaded in ${(performance.now() - startMs).toFixed(0)}ms`,
       );
       pipelineInstance = classifier;
       isLoaded = true;
@@ -70,7 +68,7 @@ export function isEmotionClassifierReady(): boolean {
 }
 
 export async function classifyEmotion(
-  text: string
+  text: string,
 ): Promise<EmotionClassification | null> {
   if (!text?.trim()) return null;
 
@@ -86,7 +84,10 @@ export async function classifyEmotion(
     const resultArray = Array.isArray(result[0]) ? result[0] : result;
 
     const scores: Partial<Record<EmotionLabel, number>> = {};
-    for (const item of resultArray as Array<{ label: EmotionLabel; score: number }>) {
+    for (const item of resultArray as Array<{
+      label: EmotionLabel;
+      score: number;
+    }>) {
       scores[item.label] = item.score;
     }
 
