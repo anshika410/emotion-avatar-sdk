@@ -47,9 +47,15 @@ export function AnimatedAvatar({
     setIsInitialized(true);
   }, []);
 
+  // Logging all params for debugging purposes
   useEffect(() => {
-    if (emotionDetection && aiMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(aiMessage).then((detected) => setEmotion(detected));
+    console.log("[AnimatedAvatar]\nProps:\nisSpeaking:", isSpeaking, "\nisListening:", isListening, "\noverrideEmotion:", overrideEmotion, "\nemotionDetection:", emotionDetection, "\nautoAnimate:", autoAnimate, );
+  }, [emotionDetection, autoAnimate, isSpeaking, isListening, overrideEmotion]);
+
+  useEffect(() => {
+    if (emotionDetection && aiMessage && isInitialized && autoAnimate && isSpeaking) {
+      // analyzeEmotion(aiMessage).then((detected) => setEmotion(detected));
+      setEmotion(EmotionState.SPEAK_NEUTRAL);
     }
   }, [aiMessage, emotionDetection, isInitialized, autoAnimate, analyzeEmotion, setEmotion]);
 

@@ -7,4 +7,8 @@ export const DEFAULT_AVATAR_IMAGES: Record<EmotionState, string> = {
   [EmotionState.THINK]:         "/assets/regular-thinking.webp",
   [EmotionState.CAUTION]:       "/assets/glassadjustment.webp",
   [EmotionState.CELEBRATE]:     "/assets/bubblepop.webp",
+  [EmotionState.HAPPY]: "/assets/Zoe_happy.webp",
+  [EmotionState.SAD]: "/assets/Zoe_sad.webp",
+  [EmotionState.ANGRY]: "/assets/Zoe_disgust.webp",
+  [EmotionState.SURPRISED]: "/assets/Zoe_surprise.webp",
 };
