@@ -5,7 +5,7 @@ interface AvatarRendererProps {
   emotionState: EmotionState;
   intensity: number;
   size: number;
-  emotionImages: Record<EmotionState, string>; // always fully resolved by parent
+  emotionImages: Record<EmotionState, string>; // already blob URLs from hook
 }
 
 export function AvatarRenderer({
@@ -16,22 +16,8 @@ export function AvatarRenderer({
 }: AvatarRendererProps) {
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const videoRef = useRef<HTMLImageElement>(null);
-  const preloadedImagesRef = useRef<Set<string>>(new Set());
 
-  // Preload all emotion images on mount
-  useEffect(() => {
-    const preloadImage = (src: string): Promise<void> => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => { preloadedImagesRef.current.add(src); resolve(); };
-        img.onerror = () => resolve();
-        img.src = src;
-      });
-    };
-    Object.values(emotionImages).forEach((src) => preloadImage(src));
-  }, [emotionImages]);
-
-  // Update avatar image when emotion changes
+  // Swap image when emotion changes — no fetching needed, srcs are already blob URLs
   useEffect(() => {
     const imgEl = videoRef.current;
     if (!imgEl) return;
@@ -41,28 +27,13 @@ export function AvatarRenderer({
 
     setIsVideoSwitching(true);
     imgEl.dataset.srcKey = newSrc;
-    imgEl.src = newSrc;
+    imgEl.src = newSrc; // safe — already a blob URL
 
-    if (preloadedImagesRef.current.has(newSrc)) {
-      setIsVideoSwitching(false);
-    } else {
-      const handleLoad = () => {
-        setIsVideoSwitching(false);
-        preloadedImagesRef.current.add(newSrc);
-      };
-      imgEl.addEventListener("load", handleLoad, { once: true });
-      return () => imgEl.removeEventListener("load", handleLoad);
-    }
+    // Just wait for the img element to finish painting
+    const handleLoad = () => setIsVideoSwitching(false);
+    imgEl.addEventListener("load", handleLoad, { once: true });
+    return () => imgEl.removeEventListener("load", handleLoad);
   }, [emotionState, emotionImages]);
-
-  // Set initial image on mount
-  useEffect(() => {
-    const imgEl = videoRef.current;
-    if (!imgEl) return;
-    const initialSrc = emotionImages[EmotionState.LISTEN];
-    imgEl.dataset.srcKey = initialSrc;
-    imgEl.src = initialSrc;
-  }, [emotionImages]);
 
   const imageStyle: React.CSSProperties = {
     width: `${size}px`,
