@@ -1,6 +1,7 @@
 import { EmotionState } from "../types/emotion";
 const REPO_ID = "navgurukul-ai/realtime-avatar-animation";
 const ASSETS_BASE = `https://huggingface.co/${REPO_ID}/resolve/main/assets`;
+// https://huggingface.co/navgurukul-ai/realtime-avatar-animation/resolve/main/assets
 
 export const DEFAULT_AVATAR_IMAGES: Record<EmotionState, string> = {
   [EmotionState.LISTEN]: `${ASSETS_BASE}/listening.webp`,

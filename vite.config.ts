@@ -9,8 +9,7 @@ export default defineConfig({
     react(),
     dts({ include: ["src/**/*"], outDir: "dist", rollupTypes: true }),
     viteStaticCopy({
-      targets: [
-        { src: "models", dest: "." },      // → dist/models/
+      targets: [     // → dist/models/
         { src: "assets", dest: "." },      // → dist/assets/
       ],
     }),

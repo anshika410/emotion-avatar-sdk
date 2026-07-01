@@ -5,32 +5,80 @@ interface AvatarRendererProps {
   emotionState: EmotionState;
   intensity: number;
   size: number;
-  emotionImages: Record<EmotionState, string>; // already blob URLs from hook
+  emotionImages: Record<EmotionState, string>; // always fully resolved by parent
 }
 
 export function AvatarRenderer({
   emotionState,
-  intensity,
   size,
   emotionImages,
 }: AvatarRendererProps) {
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
-  const videoRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const preloadedImagesRef = useRef<Set<string>>(new Set());
 
-  // Swap image when emotion changes — no fetching needed, srcs are already blob URLs
+  // Refs for throttling
+  const lastUpdateTimeRef = useRef<number>(0);
+  const currentDisplayedEmotionRef = useRef<EmotionState>(EmotionState.LISTEN);
+
+  // Preload all emotion images on mount or when the map changes
   useEffect(() => {
-    const imgEl = videoRef.current;
+    const preloadImage = (src: string): Promise<void> =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          preloadedImagesRef.current.add(src);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = src;
+      });
+    Object.values(emotionImages).forEach(preloadImage);
+  }, [emotionImages]);
+
+  // Update avatar image when emotion changes, with throttling
+  useEffect(() => {
+    const imgEl = imgRef.current;
     if (!imgEl) return;
 
     const newSrc = emotionImages[emotionState];
     if (!newSrc || imgEl.dataset.srcKey === newSrc) return;
 
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+    // const isListeningTransition =
+    //   emotionState === EmotionState.LISTEN ||
+    //   currentDisplayedEmotionRef.current === EmotionState.LISTEN;
+
+    // Throttle: allow only if 700ms passed OR it's a LISTEN transition
+    // Listening transitions are not considered for the moment.
+    if (timeSinceLastUpdate < 800) {
+      // Skip update – image stays as is
+      return;
+    }
+
+    // Apply the new image
     setIsVideoSwitching(true);
     imgEl.dataset.srcKey = newSrc;
-    imgEl.src = newSrc; // safe — already a blob URL
+    imgEl.src = newSrc;
 
-    // Just wait for the img element to finish painting
-    const handleLoad = () => setIsVideoSwitching(false);
+    // Update throttling timestamps and displayed emotion
+    lastUpdateTimeRef.current = now;
+    currentDisplayedEmotionRef.current = emotionState;
+
+    // debugging avatar files
+    console.log(`[AvatarRenderer] Switching to emotion: ${emotionState}, src: ${newSrc}`);
+    // If already preloaded, we can end the switching state immediately
+    if (preloadedImagesRef.current.has(newSrc)) {
+      setIsVideoSwitching(false);
+      return;
+    }
+
+    // Otherwise, wait for the image to load
+    const handleLoad = () => {
+      setIsVideoSwitching(false);
+      preloadedImagesRef.current.add(newSrc);
+    };
     imgEl.addEventListener("load", handleLoad, { once: true });
     return () => imgEl.removeEventListener("load", handleLoad);
   }, [emotionState, emotionImages]);
@@ -40,15 +88,13 @@ export function AvatarRenderer({
     height: `${size}px`,
     objectFit: "cover",
     borderRadius: "50%",
-    opacity: 0.6 + 0.4 * intensity,
-    transform: `scale(${1 + 0.05 * intensity})`,
-    filter: `brightness(${0.9 + 0.2 * intensity})`,
     transition: "opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease",
   };
 
   return (
     <img
-      ref={videoRef}
+      ref={imgRef}
+      src={emotionImages[EmotionState.LISTEN]} // initial image
       alt="Avatar"
       style={imageStyle}
       className={`avatar-image ${isVideoSwitching ? "loading" : ""}`}
