@@ -5,7 +5,7 @@ interface AvatarRendererProps {
   emotionState: EmotionState;
   intensity: number;
   size: number;
-  emotionImages: Record<EmotionState, string>; // always fully resolved by parent
+  emotionImages: Record<EmotionState, string>; // already blob URLs from hook
 }
 
 export function AvatarRenderer({
@@ -67,7 +67,7 @@ export function AvatarRenderer({
     currentDisplayedEmotionRef.current = emotionState;
 
     // debugging avatar files
-    console.log(`[AvatarRenderer] Switching to emotion: ${emotionState}, src: ${newSrc}`);
+    console.log(`[AvatarRenderer] Switching to emotion: ${emotionState}, src: ${newSrc.slice(0, 70)}`);
     // If already preloaded, we can end the switching state immediately
     if (preloadedImagesRef.current.has(newSrc)) {
       setIsVideoSwitching(false);
