@@ -8,12 +8,6 @@ export default defineConfig({
   plugins: [
     react(),
     dts({ include: ["src/**/*"], outDir: "dist", rollupTypes: true }),
-    viteStaticCopy({
-      targets: [
-        { src: "models", dest: "." },      // → dist/models/
-        { src: "assets", dest: "." },      // → dist/assets/
-      ],
-    }),
   ],
   build: {
     lib: {

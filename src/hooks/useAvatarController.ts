@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { EmotionState } from "../types/emotion";
 import { extractTextSignalsWithML } from "../services/emotion/textSignals";
 import { DEFAULT_AVATAR_IMAGES, LOCAL_FALLBACK_IMAGES } from "../constants/defaultImages";
@@ -34,6 +34,7 @@ export function useAvatarController({
     EmotionState,
     string
   > | null>(null);
+  const lastImagesRef = useRef<string | null>(null);
 
   const resolvedImages = useMemo(
     () => ({
@@ -45,75 +46,71 @@ export function useAvatarController({
 
   // Asset loading lives here now
   useEffect(() => {
+    console.log("[AvatarController] REFERENCE\n", lastImagesRef);
+    const serialized = JSON.stringify(resolvedImages) + `_local:${loadAssetsLocally}`;
+    if (lastImagesRef.current === serialized) {
+      // Already loaded exactly this set – nothing to do
+      return;
+    }
+
     let cancelled = false;
     const objectUrls: string[] = [];
 
     async function loadImage(
       src: string,
       emotionKey: EmotionState,
-    ): Promise<[string, string] | null> {
-      
-      // If loadAssetsLocally is true, skip fetch and use local fallback
+    ): Promise<[EmotionState, string] | null> {
       if (loadAssetsLocally) {
         const localSrc = LOCAL_FALLBACK_IMAGES[emotionKey];
-        if (localSrc) {
-          console.log(`[AvatarController] Using local fallback for ${emotionKey}`);
-          return [emotionKey, localSrc];
-        }
-        return null;
+        console.log(`[AvatarController] Loading local asset for ${emotionKey}: ${localSrc.slice(0, 70)}`);
+        return localSrc ? [emotionKey, localSrc] : null;
       }
-
       try {
         const res = await fetch(src);
         if (!res.ok) throw new Error(`${res.status}`);
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
         objectUrls.push(blobUrl);
-        console.log(`[AvatarController] Preloaded from url ${emotionKey}`);
-        return [emotionKey, blobUrl]; // [original → blob]
+        return [emotionKey, blobUrl];
       } catch (err) {
         console.warn(`[AvatarController] Failed to preload ${src}`, err);
-        // Use the local fallback image if available
         const localSrc = LOCAL_FALLBACK_IMAGES[emotionKey];
-        if (localSrc) {
-          console.log(`[AvatarController] Using local fallback for ${emotionKey}`);
-          // No need to blob it – just use the local path directly
-          return [emotionKey, localSrc];
-        }
-        return null;
+        return localSrc ? [emotionKey, localSrc] : null;
       }
     }
 
+    // Instead of resetting to null, we set a loading flag if needed,
+    // but we keep the previous map so the avatar never disappears.
     setIsInitialized(false);
 
     Promise.all(
       Object.entries(resolvedImages).map(async ([emotionKey, src]) => {
-        const result = await loadImage(src, emotionKey as EmotionState);
-        return result;
+        return loadImage(src, emotionKey as EmotionState);
       })
     ).then((results) => {
       if (cancelled) return;
-      const allLoaded = results.every(Boolean);
-      if (allLoaded) {
-        // results are now ([EmotionState, string] | null)[]
-        const blobMap = Object.fromEntries(
-          results.filter((r): r is [EmotionState, string] => r !== null)
-        ) as Record<EmotionState, string>;
+      const validResults = results.filter((r): r is [EmotionState, string] => r !== null);
+      if (validResults.length > 0) {
+        const blobMap = Object.fromEntries(validResults) as Record<EmotionState, string>;
         setResolvedBlobImages(blobMap);
         setIsInitialized(true);
+        lastImagesRef.current = serialized;
+
       } else {
+        // Only set false if we have absolutely nothing (shouldn't happen with fallbacks)
         setIsInitialized(false);
       }
     });
 
     return () => {
       cancelled = true;
+      // Revoke old blob URLs from *this* run
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
-      setResolvedBlobImages(null);
+      // Do NOT set resolvedBlobImages to null
     };
-  }, [resolvedImages]);
+  }, [resolvedImages, loadAssetsLocally]); // include loadAssetsLocally as dep if it can change
 
-  
+
   // Set emotion manually
   const setEmotion = useCallback(
     (emotion: EmotionState) => {
