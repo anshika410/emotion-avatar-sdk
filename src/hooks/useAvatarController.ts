@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { EmotionState } from "../types/emotion";
 import { extractTextSignalsWithML } from "../services/emotion/textSignals";
 import { DEFAULT_AVATAR_IMAGES, LOCAL_FALLBACK_IMAGES } from "../constants/defaultImages";
+import { warmUpEmotionClassifier, disposeEmotionClassifier } from "../services/emotion/emotionClassifier";
+
 export interface UseAvatarControllerProps {
   isSpeaking?: boolean;
   isListening?: boolean;
@@ -43,6 +45,17 @@ export function useAvatarController({
     }),
     [emotionImages],
   );
+
+    // Warm up ML emotion classifier on mount
+    useEffect(() => {
+      warmUpEmotionClassifier().catch((err: unknown) =>
+        console.warn("[EmotionController] ML classifier warm-up failed (will use rule-based fallback):", err)
+      );
+      return () => {
+        disposeEmotionClassifier();
+      };
+    }, []);
+  
 
   // Asset loading lives here now
   useEffect(() => {
