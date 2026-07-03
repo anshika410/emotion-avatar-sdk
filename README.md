@@ -27,7 +27,7 @@ Since the SDK is not yet published to npm, you need to install it from your loca
 
 1. **Clone the repository**  
    ```bash
-   git clone https://github.com/your-org/avatar-sdk.git   # replace with actual repo URL
+   git clone https://github.com/anshika410/emotion-avatar-sdk.git 
    cd avatar-sdk
    ```
 
