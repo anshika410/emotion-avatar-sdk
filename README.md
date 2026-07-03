@@ -1,9 +1,3 @@
-Got it—we'll include a **complete, real‑world usage example** that demonstrates how to integrate the component with your own state management (including interim/final transcripts from STT). The example below uses the exact props from your snippet, and we’ll also show the typical import and state setup.
-
-Here’s the updated **README** (replace your existing one with this):
-
----
-
 # @anshika.t/avatar-sdk
 
 A React SDK for real‑time animated avatars powered by **on‑device emotion classification**.  
