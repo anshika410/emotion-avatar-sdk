@@ -1,405 +1,333 @@
+Got it—we'll include a **complete, real‑world usage example** that demonstrates how to integrate the component with your own state management (including interim/final transcripts from STT). The example below uses the exact props from your snippet, and we’ll also show the typical import and state setup.
+
+Here’s the updated **README** (replace your existing one with this):
+
+---
+
 # @anshika.t/avatar-sdk
 
-A real-time animated avatar SDK for React that detects emotion from LLM and user text, and renders a responsive avatar accordingly. Runs entirely in the browser using a bundled ONNX model — no server calls, no external API.
+A React SDK for real‑time animated avatars powered by **on‑device emotion classification**.  
+It analyses user or AI messages, detects the underlying emotion, and renders a corresponding avatar animation—all inside your browser, with no external API calls.
+
+> **📦 Note**: This package is **not yet published on npm**. To use or test it, clone the repository and install it locally (see [Local Installation](#-local-installation-for-testing) below).
 
 ---
 
-## How it works
+## ✨ Features
 
-Text from your LLM or user is analyzed by a quantized BERT model (bundled inside the package) running locally via WebAssembly. The model classifies the text into one of 13 emotions, which are then mapped to one of 6 avatar states. The avatar renders a `.webp` animation frame that matches the detected emotion.
+- **Real‑time emotion classification** – uses a lightweight DistilBERT model (via Transformers.js + ONNX Runtime) running locally.
+- **10 emotion states** – mapped from model labels to distinct avatar expressions (happy, sad, angry, surprised, encourage, caution, think, celebrate, neutral listening, neutral speaking).
+- **Smooth transitions** – avatar image changes are throttled to **800 ms** to avoid flickering and ensure a polished UX.
+- **Flexible asset loading** – default avatar images are bundled locally, but you can override individual emotions or load all assets from Hugging Face.
+- **Complete React hooks** – `useAvatarController` gives you full control over emotion analysis, state, and image resolution.
+- **No server required** – everything runs client‑side; the model is cached in IndexedDB after the first load (~17 MB).
+- **Designed for integration** – works with any chat UI, LLM, STT, or TTS system (these are **not** included).
 
+---
+
+## 📦 Installation
+
+### Using the package locally (for testing)
+
+Since the SDK is not yet published to npm, you need to install it from your local clone:
+
+1. **Clone the repository**  
+   ```bash
+   git clone https://github.com/your-org/avatar-sdk.git   # replace with actual repo URL
+   cd avatar-sdk
+   ```
+
+2. **Install dependencies and build**  
+   ```bash
+   npm install
+   npm run build          # or whatever build script is defined
+   ```
+
+3. **Install the local package in your application**  
+   In your *application’s* root directory, run:
+   ```bash
+   npm install /path/to/avatar-sdk
+   ```
+   Or, if you want to keep it linked for development:
+   ```bash
+   npm link /path/to/avatar-sdk
+   ```
+
+   > **Tip**: Using `npm install ../avatar-sdk` with a relative path is often the simplest.
+
+4. **Install peer dependencies** in your application (if not already present):
+   ```bash
+   npm install react react-dom @huggingface/transformers onnxruntime-web
+   ```
+
+Now you can import `AnimatedAvatar` from `@anshika.t/avatar-sdk` as shown in the examples below.
+
+---
+
+## ⚙️ Additional Setup
+
+The SDK uses `onnxruntime-web` for inference. You must copy the ONNX runtime WASM files into your public directory.
+
+1. Inside your project, create a folder: `public/ort/`
+2. Copy the necessary `.wasm` files from `node_modules/onnxruntime-web/dist/` into that folder.
+
+Example:
+
+```text
+public/
+└── ort/
+    ├── ort-wasm-simd-threaded.wasm
+    ├── ort-wasm-simd.wasm
+    └── ...
 ```
-LLM response / user message
-        ↓
-BERT ONNX model (runs in browser via WASM)
-        ↓
-13-class emotion → 6 avatar states
-        ↓
-Animated .webp avatar
+
+The SDK will look for these files at the `/ort/` path. If you serve them from a different location, you can configure it via the Transformers.js `env`:
+
+```ts
+import { env } from '@huggingface/transformers';
+env.backends.onnx.wasm!.wasmPaths = '/your-custom-path/';
 ```
 
 ---
 
-## Requirements
+## 🚀 Quick Start
 
-- React 18 or 19
-- A Vite-based app (Next.js works too — see notes below)
-
----
-
-## Local Installation (Package Not Yet Published to NPM)
-
-The package is currently under development and has not been published to NPM yet. To install it locally:
-
-### 1. Build the SDK
-
-From the SDK repository:
-
-```bash
-npm install
-npm run build
-npm pack
-```
-
-This will generate a package file similar to:
-
-```bash
-anshika-avatar-sdk-0.1.2.tgz
-```
-
-### 2. Install in Your Project
-
-Copy the generated `.tgz` file into your application repository (or note its absolute path), then run:
-
-```bash
-npm install ./anshika-avatar-sdk-0.1.2.tgz
-```
-
-Or install directly from the SDK location:
-
-```bash
-npm install C:/path/to/anshika-avatar-sdk-0.1.2.tgz
-```
-
-### 3. Install Required Peer Dependencies
-
-```bash
-npm install react react-dom @huggingface/transformers onnxruntime-web
-```
-
-### 4. Verify Installation
-
-```bash
-npm ls @anshika/avatar-sdk
-```
-
-Expected output:
-
-```bash
-@anshika/avatar-sdk@0.1.2
-```
-
-The SDK is now ready to be imported into your React application.
+The simplest way to get started is to import the component and pass your transcript and speaking/listening states.
 
 ```tsx
-import { AnimatedAvatar } from "@anshika/avatar-sdk";
+import { AnimatedAvatar } from '@anshika.t/avatar-sdk';
+
+function App() {
+  // These would typically come from your STT and TTS systems
+  const [transcript, setTranscript] = useState('');          // final user text
+  const [interimTranscript, setInterimTranscript] = useState(''); // real‑time partial
+  const [fullCaption, setFullCaption] = useState('');        // AI message
+  const [isListening, setIsListening] = useState(false);
+  const [isActuallyPlaying, setIsActuallyPlaying] = useState(false); // AI speaking
+
+  return (
+    <AnimatedAvatar
+      aiMessage={fullCaption}
+      userMessageInterim={interimTranscript.trim()}
+      userMessageFinal={transcript.trim()}
+      emotionDetection={true}
+      autoAnimate={true}
+      isSpeaking={isActuallyPlaying}
+      isListening={isListening}
+    />
+  );
+}
 ```
 
+---
 
-## Consumer app setup
+## 💬 Using `userMessageInterim` & `userMessageFinal`
 
-### 1. Add avatar assets to your public folder
+The SDK gives you **complete flexibility** in how you feed user text. You are **not required** to use both props.
 
-The package does not bundle avatar images. Place your `.webp` files in your app's `public/avatars/` folder using these exact filenames:
+| Prop | Purpose | When to use |
+|------|---------|-------------|
+| `userMessageInterim` | Analysed in real time as the text changes | Pass **partial / live** transcripts from your STT engine here. The avatar reacts instantly to every keystroke or speech chunk. |
+| `userMessageFinal` | Analysed only when this specific prop changes | Pass **final / committed** transcripts here (e.g., when a sentence is completed or the user stops speaking). |
 
+**You can choose any of these three approaches:**
+
+1. **Use only `userMessageInterim`** (simplest)  
+   Pass your entire user transcript (partial + final) here. The avatar updates reactively on every change.
+
+2. **Use both** (recommended for advanced STT)  
+   Send real‑time partial results to `userMessageInterim` for instant feedback, and the final confirmed transcript to `userMessageFinal` for a more accurate definitive analysis. The SDK handles both independently and applies the latest emotion.
+
+3. **Use only `userMessageFinal`**  
+   Leave `userMessageInterim` empty and pass the final text only when it's ready. The avatar will update once per user turn.
+
+Pick the method that best fits your Speech‑to‑Text (STT) pipeline—the SDK works seamlessly with all of them.
+
+---
+
+## 🧩 Component Props (`AnimatedAvatar`)
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `aiMessage` | `string` | `""` | Text from the AI – triggers emotion analysis when `isSpeaking` and `autoAnimate` are true. |
+| `userMessageInterim` | `string` | `""` | Partial / real‑time user transcript. Analysed on every change. **Can be used alone** for all user input. |
+| `userMessageFinal` | `string` | `""` | Final / committed user transcript. Analysed when this prop changes. **Optional** – use only if you need to separate partial and final transcripts. |
+| `emotionDetection` | `boolean` | `true` | Enable/disable emotion analysis. |
+| `autoAnimate` | `boolean` | `true` | Automatically update avatar when emotion changes. |
+| `isSpeaking` | `boolean` | `false` | Set to `true` when the AI is speaking – avatar goes to `SPEAK_NEUTRAL`. |
+| `isListening` | `boolean` | `false` | Set to `true` when the system is listening – avatar goes to `LISTEN`. |
+| `overrideEmotion` | `EmotionState` | `undefined` | Manually force a specific emotion (overrides analysis). |
+| `onEmotionChange` | `(emotion: EmotionState, intensity: number) => void` | `undefined` | Callback fired whenever the emotion changes. |
+| `emotionImages` | `Partial<Record<EmotionState, string>>` | `undefined` | Custom image URLs for any emotion – merges with defaults. |
+| `onInitialized` | `(isInitialized: boolean) => void` | `undefined` | Callback when the avatar and model are ready. |
+| `size` | `number` | `260` | Diameter of the avatar (px). |
+| `className` | `string` | `""` | Additional CSS class for the container. |
+
+---
+
+## 😊 Emotion States & Image Mapping
+
+The SDK uses the following `EmotionState` enum. Each state is tied to a specific avatar image (defaults are bundled locally).
+
+```ts
+enum EmotionState {
+  LISTEN,          // listening / idle
+  SPEAK_NEUTRAL,   // speaking without strong emotion
+  ENCOURAGE,       // positive, supportive
+  THINK,           // thinking / confused
+  CAUTION,         // concerned / warning
+  CELEBRATE,       // excited, joyful
+  HAPPY,           // happiness
+  SAD,             // sadness
+  ANGRY,           // anger / disgust
+  SURPRISED        // surprise
+}
 ```
-public/
-└── avatars/
+
+**Model label → EmotionState mapping** (from `useAvatarController`):
+
+| Model Label     | Mapped EmotionState |
+|-----------------|----------------------|
+| happiness       | `HAPPY`              |
+| love / desire   | `ENCOURAGE`          |
+| anger / disgust | `ANGRY`              |
+| fear            | `CAUTION`            |
+| sadness         | `SAD`                |
+| surprise        | `SURPRISED`          |
+| shame / guilt   | `CAUTION`            |
+| confusion       | `THINK`              |
+| sarcasm         | `CAUTION`            |
+| *others*        | `LISTEN` / fallback  |
+
+---
+
+## 🖼️ Customising Avatar Images
+
+You can override images for one or more emotions using the `emotionImages` prop:
+
+```tsx
+<AnimatedAvatar
+  emotionImages={{
+    [EmotionState.HAPPY]: '/my-happy-avatar.png',
+    [EmotionState.SAD]: '/my-sad-avatar.png',
+  }}
+/>
+```
+
+These URLs are merged with the default set. By default, the SDK uses **local assets** (bundled WebP files) – it **does not** fetch them from Hugging Face unless you explicitly set `loadAssetsLocally={false}` in the `useAvatarController` hook.
+
+---
+
+## ⏱️ Smooth Transitions (800 ms Throttle)
+
+To avoid rapid, jarring image changes, the `AvatarRenderer` enforces a **minimum delay of 800 ms** between emotion‑driven image swaps. This ensures a pleasant viewing experience, especially during fast‑paced conversations.
+
+---
+
+## 🧠 Advanced Usage: `useAvatarController`
+
+For full control, you can use the hook directly:
+
+```tsx
+import { useAvatarController } from '@anshika.t/avatar-sdk';
+
+const {
+  emotionState,
+  intensity,
+  setEmotion,
+  analyzeEmotion,
+  isInitialized,
+  resolvedBlobImages,
+} = useAvatarController({
+  isSpeaking,
+  isListening,
+  onEmotionChange,
+  emotionImages,
+  loadAssetsLocally: true,   // default: local assets
+});
+```
+
+- `analyzeEmotion(text)` – runs the ML classifier and returns a `Promise<EmotionState>`.
+- `setEmotion(state)` – manually set the emotion.
+- `resolvedBlobImages` – the final image URLs (blob or local) for each emotion.
+
+---
+
+## 🏗️ Architecture Overview
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    Your Application                         │
+│  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
+│  │   LLM   │  │  Chat UI │  │   STT    │  │    TTS    │  │
+│  └─────────┘  └──────────┘  └──────────┘  └───────────┘  │
+│                         │                                  │
+│                         ▼                                  │
+│              ┌─────────────────────┐                       │
+│              │   AnimatedAvatar    │                       │
+│              │  (React Component)  │                       │
+│              └─────────────────────┘                       │
+│                         │                                  │
+│   ┌─────────────────────┼─────────────────────┐           │
+│   ▼                     ▼                     ▼           │
+│ ┌──────────┐   ┌─────────────────┐   ┌──────────────────┐ │
+│ │ Avatar   │   │ Emotion         │   │ Asset Resolver   │ │
+│ │ Renderer │   │ Classifier      │   │ (local / remote) │ │
+│ └──────────┘   │ (DistilBERT     │   └──────────────────┘ │
+│                │  + ONNX)        │                        │
+│                └─────────────────┘                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📂 Project Structure (SDK internals)
+
+```text
+src/
+├── components/
+│   ├── AnimatedAvatar.tsx      # main component
+│   └── AvatarRenderer.tsx      # image rendering with throttling
+├── hooks/
+│   ├── useAvatarController.ts  # core logic (emotion, assets, state)
+│   └── useEmotionController.ts # (legacy / optional)
+├── services/emotion/
+│   ├── emotionClassifier.ts    # Transformers.js pipeline wrapper
+│   └── textSignals.ts          # rule-based + ML signal extraction
+├── constants/
+│   └── defaultImages.ts        # default local & remote asset URLs
+├── types/
+│   ├── emotion.ts              # EmotionState, EmotionLabel, TextSignals
+│   └── assets.d.ts             # Webpack image imports
+└── assets/                     # bundled WebP avatar images
     ├── listening.webp
     ├── speaking-edited.webp
     ├── ballbounce.webp
     ├── regular-thinking.webp
     ├── glassadjustment.webp
-    └── bubblepop.webp
-```
-
-These map to the six avatar emotion states:
-
-| File | Emotion state | Triggered by |
-|---|---|---|
-| `listening.webp` | LISTEN | Default / idle |
-| `speaking-edited.webp` | SPEAK_NEUTRAL | `isSpeaking: true` |
-| `ballbounce.webp` | ENCOURAGE | Joy, love, desire |
-| `regular-thinking.webp` | THINK | Surprise, confusion |
-| `glassadjustment.webp` | CAUTION | Anger, fear, sadness, disgust |
-| `bubblepop.webp` | CELEBRATE | Manual override |
-
-### 2. Update your Vite config
-
-Add this to your app's `vite.config.ts` to prevent Vite from trying to bundle the ONNX WebAssembly runtime:
-
-```ts
-export default defineConfig({
-  optimizeDeps: {
-    exclude: ["onnxruntime-web"],
-  },
-  server: {
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
-    },
-  },
-});
-```
-
-The `Cross-Origin-*` headers are required for `SharedArrayBuffer`, which the ONNX WASM backend uses internally.
-
-### 3. Warm up the model on app mount
-
-The first time the model loads it takes 300–800ms. Call `warmUpEmotionClassifier()` once when your app starts so the model is ready before the user sends their first message:
-
-```tsx
-import { warmUpEmotionClassifier } from "@anshika.t/avatar-sdk";
-import { useEffect } from "react";
-
-export function App() {
-  useEffect(() => {
-    warmUpEmotionClassifier().catch(console.warn);
-  }, []);
-
-  return <YourApp />;
-}
+    ├── bubblepop.webp
+    ├── Zoe_happy.webp
+    ├── Zoe_sad.webp
+    ├── Zoe_disgust.webp
+    └── Zoe_surprise.webp
 ```
 
 ---
 
-## Basic usage
+## 💡 What's Included / Not Included
 
-```tsx
-import { AnimatedAvatar } from "@anshika.t/avatar-sdk";
+**✅ Included**
+- Emotion detection (rule‑based + ML)
+- DistilBERT model (loaded via Hugging Face, cached locally)
+- Avatar rendering with 10 emotion states
+- 800 ms transition throttling
+- Custom image overrides
+- React hooks for advanced use
 
-export function ChatUI() {
-  const [llmResponse, setLlmResponse] = useState("");
-  const [userMessage, setUserMessage] = useState("");
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-
-  return (
-    <div>
-      <AnimatedAvatar
-        aiMessage={llmResponse}
-        userMessage={userMessage}
-        isSpeaking={isSpeaking}
-        isListening={isListening}
-        size={260}
-      />
-    </div>
-  );
-}
-```
-
-The avatar automatically:
-- Switches to `SPEAK_NEUTRAL` while TTS is playing (`isSpeaking: true`)
-- Switches to `LISTEN` while STT is active (`isListening: true`)
-- Analyzes `aiMessage` and `userMessage` for emotion when they change
-
----
-
-## Props
-
-### `<AnimatedAvatar />`
-
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `aiMessage` | `string` | `""` | Latest text from the LLM. Analyzed for emotion automatically. |
-| `userMessage` | `string` | `""` | Latest text from the user. Analyzed for emotion automatically. |
-| `isSpeaking` | `boolean` | `false` | Pass your TTS speaking state. Sets avatar to SPEAK_NEUTRAL. |
-| `isListening` | `boolean` | `false` | Pass your STT listening state. Sets avatar to LISTEN. |
-| `emotionDetection` | `boolean` | `true` | Enable or disable automatic ML emotion analysis. |
-| `autoAnimate` | `boolean` | `true` | Enable or disable automatic state transitions. |
-| `overrideEmotion` | `EmotionState` | — | Manually force a specific avatar state. |
-| `onEmotionChange` | `(emotion, intensity) => void` | — | Callback fired whenever the avatar emotion changes. |
-| `emotionImages` | `Partial<Record<EmotionState, string>>` | — | Override individual or all avatar image paths. |
-| `size` | `number` | `260` | Avatar size in pixels (width and height). |
-| `className` | `string` | `""` | CSS class applied to the outer container div. |
-
----
-
-## Custom image paths
-
-If your assets are in a different location than `public/avatars/`, import `DEFAULT_AVATAR_IMAGES` and override just the paths you need:
-
-```tsx
-import { AnimatedAvatar, DEFAULT_AVATAR_IMAGES, EmotionState } from "@anshika.t/avatar-sdk";
-
-<AnimatedAvatar
-  aiMessage={llmResponse}
-  emotionImages={{
-    ...DEFAULT_AVATAR_IMAGES,
-    [EmotionState.CELEBRATE]: "/my-path/custom-celebrate.webp",
-  }}
-/>
-```
-
-Or override all paths at once:
-
-```tsx
-import { EmotionState } from "@anshika.t/avatar-sdk";
-
-const myImages: Record<EmotionState, string> = {
-  [EmotionState.LISTEN]:        "/my-path/idle.webp",
-  [EmotionState.SPEAK_NEUTRAL]: "/my-path/talking.webp",
-  [EmotionState.ENCOURAGE]:     "/my-path/happy.webp",
-  [EmotionState.THINK]:         "/my-path/thinking.webp",
-  [EmotionState.CAUTION]:       "/my-path/cautious.webp",
-  [EmotionState.CELEBRATE]:     "/my-path/celebrate.webp",
-};
-
-<AnimatedAvatar aiMessage={llmResponse} emotionImages={myImages} />
-```
-
----
-
-## Manual emotion control
-
-Disable automatic detection and drive the avatar state yourself:
-
-```tsx
-import { AnimatedAvatar, EmotionState } from "@anshika.t/avatar-sdk";
-
-<AnimatedAvatar
-  emotionDetection={false}
-  autoAnimate={false}
-  overrideEmotion={EmotionState.CELEBRATE}
-/>
-```
-
----
-
-## Using hooks directly
-
-If you need more control, use the hooks instead of `AnimatedAvatar`:
-
-```tsx
-import {
-  useEmotionController,
-  useAvatarController,
-  EmotionState,
-} from "@anshika.t/avatar-sdk";
-
-// Higher-level: full emotion pipeline with debouncing and warm-up
-const { emotionState, intensity, analyzeText } = useEmotionController({
-  aiMessage,
-  userMessage,
-  isSpeaking,
-  isListening,
-});
-
-// Lower-level: manual emotion setting + on-demand analysis
-const { emotionState, intensity, setEmotion, analyzeEmotion } = useAvatarController({
-  isSpeaking,
-  isListening,
-  onEmotionChange: (emotion, intensity) => console.log(emotion, intensity),
-});
-```
-
----
-
-## Using the classifier directly
-
-```tsx
-import {
-  classifyEmotion,
-  warmUpEmotionClassifier,
-  isEmotionClassifierReady,
-  disposeEmotionClassifier,
-} from "@anshika.t/avatar-sdk";
-
-// Warm up on mount
-await warmUpEmotionClassifier();
-
-// Classify any text
-const result = await classifyEmotion("I just solved a really tough bug!");
-console.log(result);
-// {
-//   topEmotion: "happiness",
-//   confidence: 0.94,
-//   scores: { happiness: 0.94, neutral: 0.03, ... },
-//   inferenceMs: 42
-// }
-
-// Check if model is ready (sync)
-if (isEmotionClassifierReady()) { ... }
-
-// Clean up when done (e.g. on unmount)
-await disposeEmotionClassifier();
-```
-
----
-
-## Emotion states
-
-```ts
-enum EmotionState {
-  LISTEN        = "LISTEN",         // idle / waiting
-  SPEAK_NEUTRAL = "SPEAK_NEUTRAL",  // TTS active
-  ENCOURAGE     = "ENCOURAGE",      // happiness, love, desire
-  THINK         = "THINK",          // surprise, confusion
-  CAUTION       = "CAUTION",        // anger, fear, sadness, disgust, shame, guilt, sarcasm
-  CELEBRATE     = "CELEBRATE",      // manual override / special moments
-}
-```
-
-### Model emotion → avatar state mapping
-
-| Model output | Avatar state |
-|---|---|
-| happiness, love, desire | ENCOURAGE |
-| anger, fear, sadness, disgust, shame, guilt, sarcasm | CAUTION |
-| surprise, confusion | THINK |
-| neutral | LISTEN |
-
----
-
-## Next.js usage
-
-Add the following to `next.config.js` to handle the ONNX WASM files:
-
-```js
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  webpack: (config) => {
-    config.resolve.fallback = { fs: false };
-    return config;
-  },
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
-        ],
-      },
-    ];
-  },
-};
-
-module.exports = nextConfig;
-```
-
----
-
-## Exports
-
-```ts
-// Components
-export { AnimatedAvatar } from "./components/AnimatedAvatar";
-export { AvatarRenderer } from "./components/AvatarRenderer";
-
-// Hooks
-export { useAvatarController } from "./hooks/useAvatarController";
-export { useEmotionController } from "./hooks/useEmotionController";
-
-// Constants
-export { DEFAULT_AVATAR_IMAGES } from "./constants/defaultImages";
-
-// Services
-export { warmUpEmotionClassifier } from "./services/emotion/emotionClassifier";
-export { isEmotionClassifierReady } from "./services/emotion/emotionClassifier";
-export { classifyEmotion } from "./services/emotion/emotionClassifier";
-export { disposeEmotionClassifier } from "./services/emotion/emotionClassifier";
-export { extractTextSignals } from "./services/emotion/textSignals";
-export { extractTextSignalsWithML } from "./services/emotion/textSignals";
-
-// Types
-export type { AnimatedAvatarProps } from "./components/AnimatedAvatar";
-export type { UseAvatarControllerProps, AvatarControllerReturn } from "./hooks/useAvatarController";
-export type { EmotionState, EmotionOutput, TextSignals, EmotionLabel } from "./types/emotion";
-```
-
----
-
-## License
-
-MIT © Anshika-Tripathi
+**❌ Not Included**
+- Chat UI components
+- Any LLM integration
+- Speech‑to‑Text / Text‑to‑Speech
+- Voice Activity Detection
+- Backend services
+- Authentication
