@@ -5,7 +5,8 @@ import { useAvatarController } from "../hooks/useAvatarController";
 
 export interface AnimatedAvatarProps {
   aiMessage?: string;
-  userMessage?: string;
+  userMessageInterim?: string;
+  userMessageFinal?: string;
   emotionDetection?: boolean;
   autoAnimate?: boolean;
   isSpeaking?: boolean;
@@ -21,7 +22,8 @@ export interface AnimatedAvatarProps {
 
 export function AnimatedAvatar({
   aiMessage = "",
-  userMessage = "",
+  userMessageInterim = "",
+  userMessageFinal = "",
   emotionDetection = true,
   autoAnimate = true,
   isSpeaking = false,
@@ -72,19 +74,37 @@ export function AnimatedAvatar({
   ]);
 
   useEffect(() => {
-    if (emotionDetection && userMessage && isInitialized && autoAnimate) {
-      analyzeEmotion(userMessage).then((detected: EmotionState) =>
+    if (emotionDetection && userMessageInterim && isInitialized && autoAnimate) {
+      console.log("[AnimatedAvatar] Interim Transcript");
+      analyzeEmotion(userMessageInterim).then((detected: EmotionState) =>
         setEmotion(detected),
       );
     }
   }, [
-    userMessage,
+    userMessageInterim,
     emotionDetection,
     isInitialized,
     autoAnimate,
     analyzeEmotion,
     setEmotion,
   ]);
+
+  
+  useEffect(() => {
+    if (emotionDetection && userMessageFinal && isInitialized && autoAnimate) {
+      console.log("[AnimatedAvatar] Final Transcript");
+      analyzeEmotion(userMessageFinal).then((detected: EmotionState) => setEmotion(detected));
+    }
+  }, [
+    userMessageFinal,
+    emotionDetection, 
+    isInitialized,
+    autoAnimate,
+    analyzeEmotion,
+    setEmotion,
+  ]);
+
+
   useEffect(() => {
     if (overrideEmotion) setEmotion(overrideEmotion);
   }, [overrideEmotion, setEmotion]);
