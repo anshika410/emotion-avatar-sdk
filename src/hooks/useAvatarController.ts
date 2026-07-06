@@ -7,7 +7,7 @@ import { warmUpEmotionClassifier, disposeEmotionClassifier } from "../services/e
 export interface UseAvatarControllerProps {
   isSpeaking?: boolean;
   isListening?: boolean;
-  onEmotionChange?: (emotion: EmotionState, intensity: number) => void;
+  onEmotionChange?: (emotion: EmotionState) => void;
   emotionImages?: Partial<Record<EmotionState, string>>;
   loadAssetsLocally?: boolean; // If true, load images from local assets instead of remote URLs
 }
@@ -17,7 +17,6 @@ export interface AvatarControllerReturn {
   resolvedBlobImages: Record<EmotionState, string> | null;
   setIsInitialized: (isInitialized: boolean) => void;
   emotionState: EmotionState;
-  intensity: number;
   setEmotion: (emotion: EmotionState) => void;
   analyzeEmotion: (text: string) => Promise<EmotionState>;
 }
@@ -30,7 +29,6 @@ export function useAvatarController({
   loadAssetsLocally = true, // Default to true for local assets
 }: UseAvatarControllerProps): AvatarControllerReturn {
   const [emotionState, setEmotionState] = useState<EmotionState>(EmotionState.LISTEN);
-  const [intensity, setIntensity] = useState(0.3);
   const [isInitialized, setIsInitialized] = useState(false);
   const [resolvedBlobImages, setResolvedBlobImages] = useState<Record<
     EmotionState,
@@ -59,7 +57,9 @@ export function useAvatarController({
 
   // Asset loading lives here now
   useEffect(() => {
-    console.log("[AvatarController] REFERENCE\n", lastImagesRef);
+    
+    // Check if the resolved images have changed since the last load
+    // console.log("[AvatarController] REFERENCE\n", lastImagesRef);
     const serialized = JSON.stringify(resolvedImages) + `_local:${loadAssetsLocally}`;
     if (lastImagesRef.current === serialized) {
       // Already loaded exactly this set – nothing to do
@@ -128,8 +128,7 @@ export function useAvatarController({
   const setEmotion = useCallback(
     (emotion: EmotionState) => {
       setEmotionState(emotion);
-      setIntensity(0.8);
-      onEmotionChange?.(emotion, 0.8);
+      onEmotionChange?.(emotion);
     },
     [onEmotionChange],
   );
@@ -138,15 +137,12 @@ export function useAvatarController({
   const analyzeEmotion = useCallback(
     async (text: string): Promise<EmotionState> => {
 
-      console.log("[useAvatarController] Analyzing text:", text);
-
       if (!text.trim()) return EmotionState.LISTEN;
 
       try {
         const signals = await extractTextSignalsWithML(text);
 
-        console.log("[useAvatarController] ML Emotion:", signals.modelEmotion, " Confidence:", signals.modelConfidence.toFixed(2));
-
+        // These mapping are not fix as the avatar may gets updated
         if (signals.modelEmotion) {
           switch (signals.modelEmotion) {
             case "happiness":
@@ -193,10 +189,10 @@ export function useAvatarController({
   useEffect(() => {
     if (isSpeaking && !isListening) {
       setEmotionState(EmotionState.SPEAK_NEUTRAL);
-      setIntensity(0.7);
-    } else if (isListening) {
+    } else if (!isSpeaking && isListening) {
       setEmotionState(EmotionState.LISTEN);
-      setIntensity(0.5);
+    } else {
+      setEmotionState(EmotionState.LISTEN); // Default to LISTEN when neither speaking nor listening
     }
   }, [isSpeaking, isListening]);
 
@@ -205,7 +201,6 @@ export function useAvatarController({
     resolvedBlobImages,
     setIsInitialized,
     emotionState,
-    intensity,
     setEmotion,
     analyzeEmotion,
   };

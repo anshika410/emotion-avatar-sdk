@@ -3,7 +3,6 @@ import { EmotionState } from "../types/emotion";
 
 interface AvatarRendererProps {
   emotionState: EmotionState;
-  intensity: number;
   size: number;
   emotionImages: Record<EmotionState, string>; // already blob URLs from hook
 }
@@ -45,17 +44,13 @@ export function AvatarRenderer({
     if (!newSrc || imgEl.dataset.srcKey === newSrc) return;
 
     const now = Date.now();
-    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
-    // const isListeningTransition =
-    //   emotionState === EmotionState.LISTEN ||
-    //   currentDisplayedEmotionRef.current === EmotionState.LISTEN;
 
-    // Throttle: allow only if 700ms passed OR it's a LISTEN transition
-    // Listening transitions are not considered for the moment.
-    if (timeSinceLastUpdate < 800) {
-      // Skip update – image stays as is
-      return;
-    }
+    // Throttle updates to avoid rapid flickering
+    // const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+    // if (timeSinceLastUpdate < 400) {
+    //   // Skip update – image stays as is
+    //   return;
+    // }
 
     // Apply the new image
     setIsVideoSwitching(true);
@@ -68,6 +63,7 @@ export function AvatarRenderer({
 
     // debugging avatar files
     console.log(`[AvatarRenderer] Switching to emotion: ${emotionState}, src: ${newSrc.slice(0, 70)}`);
+
     // If already preloaded, we can end the switching state immediately
     if (preloadedImagesRef.current.has(newSrc)) {
       setIsVideoSwitching(false);

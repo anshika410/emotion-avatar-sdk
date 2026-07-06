@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { EmotionState } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
 import { useAvatarController } from "../hooks/useAvatarController";
+import { resetEmotionProcessing } from "../services/emotion/textSignals";
 
 export interface AnimatedAvatarProps {
   aiMessage?: string;
@@ -12,7 +13,7 @@ export interface AnimatedAvatarProps {
   isSpeaking?: boolean;
   isListening?: boolean;
   overrideEmotion?: EmotionState;
-  onEmotionChange?: (emotion: EmotionState, intensity: number) => void;
+  onEmotionChange?: (emotion: EmotionState) => void;
   /** Override individual or all avatar image paths. Merged with DEFAULT_AVATAR_IMAGES. */
   emotionImages?: Partial<Record<EmotionState, string>>;
   onInitialized?: (isInitialized: boolean) => void;
@@ -37,7 +38,6 @@ export function AnimatedAvatar({
 }: AnimatedAvatarProps) {
   const {
     emotionState,
-    intensity,
     setEmotion,
     analyzeEmotion,
     isInitialized,
@@ -50,20 +50,20 @@ export function AnimatedAvatar({
   });
 
   // Logging all params for debugging purposes
-  useEffect(() => {
-    console.log("[AnimatedAvatar]\nProps:\nisSpeaking:", isSpeaking, "\nisListening:", isListening, "\noverrideEmotion:", overrideEmotion, "\nemotionDetection:", emotionDetection, "\nautoAnimate:", autoAnimate, );
-  }, [emotionDetection, autoAnimate, isSpeaking, isListening, overrideEmotion]);
+  // useEffect(() => {
+  //   console.log("[AnimatedAvatar]\nProps:\nisSpeaking:", isSpeaking, "\nisListening:", isListening, "\noverrideEmotion:", overrideEmotion, "\nemotionDetection:", emotionDetection, "\nautoAnimate:", autoAnimate, );
+  // }, [emotionDetection, autoAnimate, isSpeaking, isListening, overrideEmotion]);
 
-    useEffect(() => {
+  useEffect(() => {
     onInitialized?.(isInitialized);
   }, [isInitialized, onInitialized]);
 
-  
+  // Future enhancement when model accuracy improves: analyze AI message for emotion when speaking, and user messages when listening
   useEffect(() => {
     if (emotionDetection && aiMessage && isInitialized && autoAnimate && isSpeaking) {
       // analyzeEmotion(aiMessage).then((detected) => setEmotion(detected));
       setEmotion(EmotionState.SPEAK_NEUTRAL);
-   }
+    }
   }, [
     aiMessage,
     emotionDetection,
@@ -75,10 +75,14 @@ export function AnimatedAvatar({
 
   useEffect(() => {
     if (emotionDetection && userMessageInterim && isInitialized && autoAnimate) {
-      console.log("[AnimatedAvatar] Interim Transcript");
-      analyzeEmotion(userMessageInterim).then((detected: EmotionState) =>
-        setEmotion(detected),
-      );
+      console.log("\n");
+      // count the number of words and characters in the interim transcript
+      const wordCount = userMessageInterim.trim().split(/\s+/).length;
+      const charCount = userMessageInterim.length;
+      console.log(`[AnimatedAvatar] Interim Transcript Word Count: ${wordCount}, Character Count: ${charCount}`);
+      if (wordCount > 3 || charCount > 20) {
+        analyzeEmotion(userMessageInterim).then((detected: EmotionState) => setEmotion(detected));
+      }
     }
   }, [
     userMessageInterim,
@@ -89,15 +93,21 @@ export function AnimatedAvatar({
     setEmotion,
   ]);
 
-  
+
   useEffect(() => {
     if (emotionDetection && userMessageFinal && isInitialized && autoAnimate) {
+      console.log("\n");
+
       console.log("[AnimatedAvatar] Final Transcript");
       analyzeEmotion(userMessageFinal).then((detected: EmotionState) => setEmotion(detected));
+      // reset 
+      setTimeout(() => {
+        resetEmotionProcessing();
+      }, 1000);
     }
   }, [
     userMessageFinal,
-    emotionDetection, 
+    emotionDetection,
     isInitialized,
     autoAnimate,
     analyzeEmotion,
@@ -119,7 +129,7 @@ export function AnimatedAvatar({
     height: size,
   };
 
-    if (!isInitialized || !resolvedBlobImages)
+  if (!isInitialized || !resolvedBlobImages)
     return (
       <div className={className} style={containerStyle}>
         <div
@@ -164,7 +174,6 @@ export function AnimatedAvatar({
     <div className={className} style={containerStyle}>
       <AvatarRenderer
         emotionState={emotionState}
-        intensity={intensity}
         size={size}
         emotionImages={resolvedBlobImages}
       />

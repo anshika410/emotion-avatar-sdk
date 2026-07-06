@@ -2,7 +2,6 @@
 export { AnimatedAvatar } from "./components/AnimatedAvatar";
 export { AvatarRenderer } from "./components/AvatarRenderer";
 export { useAvatarController } from "./hooks/useAvatarController";
-export { useEmotionController } from "./hooks/useEmotionController";
 
 // Types
 export type {

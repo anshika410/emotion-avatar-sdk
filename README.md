@@ -151,7 +151,7 @@ Pick the method that best fits your Speech‑to‑Text (STT) pipeline—the SDK 
 | `isSpeaking` | `boolean` | `false` | Set to `true` when the AI is speaking – avatar goes to `SPEAK_NEUTRAL`. |
 | `isListening` | `boolean` | `false` | Set to `true` when the system is listening – avatar goes to `LISTEN`. |
 | `overrideEmotion` | `EmotionState` | `undefined` | Manually force a specific emotion (overrides analysis). |
-| `onEmotionChange` | `(emotion: EmotionState, intensity: number) => void` | `undefined` | Callback fired whenever the emotion changes. |
+| `onEmotionChange` | `(emotion: EmotionState) => void` | `undefined` | Callback fired whenever the emotion changes. |
 | `emotionImages` | `Partial<Record<EmotionState, string>>` | `undefined` | Custom image URLs for any emotion – merges with defaults. |
 | `onInitialized` | `(isInitialized: boolean) => void` | `undefined` | Callback when the avatar and model are ready. |
 | `size` | `number` | `260` | Diameter of the avatar (px). |

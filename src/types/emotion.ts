@@ -19,8 +19,6 @@ export enum EmotionState {
 /** Output of the emotion analysis */
 export interface EmotionOutput {
   state: EmotionState;
-  /** 0–1 intensity value controlling CSS effects (opacity, scale, brightness) */
-  intensity: number;
 }
 
 /** The 6 Ekman emotion labels from DistilBERT */
