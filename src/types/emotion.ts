@@ -14,6 +14,8 @@ export enum EmotionState {
   SAD = "SAD",
   ANGRY = "ANGRY",
   SURPRISED = "SURPRISED",
+  SHOCK = "SHOCK",
+  CONFUSE = "CONFUSE",
 }
 
 /** Output of the emotion analysis */

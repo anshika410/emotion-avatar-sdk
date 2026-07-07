@@ -59,7 +59,7 @@ const EMOTION_SWITCH_THRESHOLD = 0.05;
 let predictionHistory: Array<Record<string, number>> = [];
 
 /** History of confidence value of past emitted emotions (not used for evaluation yet) */
-let confidenceHistory: Array<number> = [];
+// let confidenceHistory: Array<number> = [];
 
 /** Last emotion that was actually emitted (default: neutral) */
 let lastEmittedEmotion: string = 'neutral';
@@ -101,14 +101,14 @@ function getSmoothedScores(newScores: Record<string, number>): Record<string, nu
  * Gets the moving average of confidence values over the last SMOOTHING_WINDOW predictions
  * Not used for evaluation yet, but could be useful for future enhancements
  */
-function getMovingAverageConfidence(newConfidence: number): number {
-  confidenceHistory.push(newConfidence);
-  if (confidenceHistory.length > SMOOTHING_WINDOW) {
-    confidenceHistory.shift();
-  }
-  const sum = confidenceHistory.reduce((a, b) => a + b, 0);
-  return sum / confidenceHistory.length;
-}
+// function getMovingAverageConfidence(newConfidence: number): number {
+//   confidenceHistory.push(newConfidence);
+//   if (confidenceHistory.length > SMOOTHING_WINDOW) {
+//     confidenceHistory.shift();
+//   }
+//   const sum = confidenceHistory.reduce((a, b) => a + b, 0);
+//   return sum / confidenceHistory.length;
+// }
 
 /** Get top N emotions (sorted descending by score). */
 function getTopN(scores: Record<string, number>, n: number): Array<{ emotion: string; score: number }> {
@@ -125,9 +125,7 @@ function getTopN(scores: Record<string, number>, n: number): Array<{ emotion: st
  */
 export function resetEmotionProcessing(): void {
   predictionHistory = [];
-  confidenceHistory = [];
-  console.log("[textsignals] Emotion state reset");
-  console.log("[textsignals] Prediction history shape", predictionHistory.length);
+  // confidenceHistory = [];
   lastEmittedEmotion = 'neutral';
   lastEmittedConfidence = 0;
 }
@@ -166,7 +164,6 @@ export async function extractTextSignalsWithML(
     return base;
   }
 
-  console.log(`[textsignals] Updated prediction history:`, predictionHistory);
   // 1. Smooth the raw scores over the last N predictions
   const smoothedScores = getSmoothedScores(result.scores);
 
@@ -203,17 +200,6 @@ export async function extractTextSignalsWithML(
       lastEmittedConfidence = emittedConfidence;
     }
   }
-  // Update the emmitted confidence history
-  let smoothedConfidence = getMovingAverageConfidence(emittedConfidence);
-
-  // Debug logs (optional)
-  console.log(`[textsignals] Transcript: "${transcript}"`);
-  console.log(`[textsignals] ML Top RAW emotion:`, result.topEmotion, `(${result.confidence.toFixed(5)})`);
-  console.log(`[textsignals] Final Emitted Emotion :`, emittedEmotion, `(${emittedConfidence.toFixed(5)})`);
-  console.log(`[textsignals] Top smoothed emotions:\n${JSON.stringify(topTwo)}`);
-  console.log(`[textsignals] Rolling Buffer Size:${predictionHistory.length}`);
-  console.log(`[textsignals] Rolling Average:${smoothedConfidence.toFixed(5)}`);
-  console.log(`[textsignals] Diff = ${diff.toFixed(4)} → ${diff >= EMOTION_SWITCH_THRESHOLD ? 'switch' : 'keep'}`);
 
   return {
     ...base,

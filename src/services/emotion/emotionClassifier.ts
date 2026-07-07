@@ -60,7 +60,7 @@ async function getClassifier(): Promise<ClassificationPipeline> {
 export async function warmUpEmotionClassifier(): Promise<void> {
   const classifier = await getClassifier();
   await classifier("hello world");
-  console.log("[EmotionClassifier] Warm-up complete");
+  console.log("[EmotionClassifier] Emotion model warm-up complete");
 }
 
 export function isEmotionClassifierReady(): boolean {
