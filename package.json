@@ -1,6 +1,6 @@
 {
-  "name": "@anshika.t/avatar-sdk",
-  "version": "0.1.2",
+  "name": "@navgurukul/avatar-sdk",
+  "version": "0.0.1",
   "description": "Real-time animated avatar SDK with emotion detection and avatar rendering",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -51,6 +51,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anshika.t/avatar-sdk.git"
+    "url": "https://github.com/navgurukul/avatar-sdk.git"
   }
 }

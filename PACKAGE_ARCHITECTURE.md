@@ -2,254 +2,348 @@
 
 ## Overview
 
-`@anshika.t/avatar-sdk` is a zero-server, browser-native React SDK. It takes text input from an LLM or user, runs emotion classification locally using a quantized BERT model via WebAssembly, and renders an animated avatar that reflects the detected emotional state in real time.
+`@navgurukul/avatar-sdk` is a React SDK for rendering a real-time emotion-aware animated avatar.
 
-The package ships no avatar images. It ships only JS, types, and the ONNX model. Avatar `.webp` files are provided by the consumer and served from their own public folder.
+The SDK analyzes conversation state and user transcripts to determine the most appropriate avatar expression. Emotion detection runs entirely in the browser using a Hugging Face Transformers model, while avatar assets are automatically fetched from Hugging Face with local fallbacks for improved reliability.
+
+The SDK is designed to integrate seamlessly with any conversational AI application and remains independent of the consumer's Speech-to-Text (STT), Text-to-Speech (TTS), or LLM implementation.
 
 ---
 
-## Directory structure
+# High-Level Architecture
 
 ```
-emotion-avatar-sdk/
+                     Consumer Application
+                              │
+                              │
+       aiMessage, user transcripts, speaking/listening state
+                              │
+                              ▼
+                    AnimatedAvatar Component
+                              │
+                              ▼
+                  useAvatarController Hook
+                    │                    │
+                    │                    │
+                    ▼                    ▼
+          Emotion Classification     Asset Resolution
+                    │                    │
+                    ▼                    ▼
+           Hugging Face Model     Avatar Image Loader
+                    │                    │
+                    └────────────┬───────┘
+                                 │
+                                 ▼
+                         AvatarRenderer
+                                 │
+                                 ▼
+                         Animated Avatar
+```
+
+---
+
+# Project Structure
+
+```
+src/
+├── components/
+│   ├── AnimatedAvatar.tsx
+│   └── AvatarRenderer.tsx
 │
-├── models/
-│   └── onnx/                         # Bundled into dist/ at build time
-│       ├── config.json               # Model architecture + 13-label id2label map
-│       ├── model.onnx                # Full precision model
-│       ├── model_int8.onnx           # Quantized model (used at runtime)
-│       ├── special_tokens_map.json
-│       ├── tokenizer_config.json
-│       ├── tokenizer.json
-│       └── vocab.txt
+├── constants/
+│   └── defaultImages.ts
 │
-├── src/
-│   ├── components/
-│   │   ├── AnimatedAvatar.tsx        # Main consumer-facing component
-│   │   └── AvatarRenderer.tsx        # Pure rendering — img tag + transition logic
-│   │
-│   ├── constants/
-│   │   └── defaultImages.ts          # Default /avatars/*.webp path map
-│   │
-│   ├── hooks/
-│   │   ├── useAvatarController.ts    # Lightweight hook — emotion state + analyzeEmotion
-│   │   └── useEmotionController.ts   # Full hook — debouncing, warm-up, dispose
-│   │
-│   ├── services/
-│   │   └── emotion/
-│   │       ├── emotionClassifier.ts  # ONNX pipeline singleton + public classifier API
-│   │       └── textSignals.ts        # Rule-based + ML hybrid text analysis
-│   │
-│   ├── types/
-│   │   └── emotion.ts                # All shared types and enums
-│   │
-│   └── index.ts                      # Public API — all exports
+├── hooks/
+│   └── useAvatarController.ts
 │
-├── vite.config.ts
-├── tsconfig.json
-├── package.json
-├── README.md
-└── PACKAGE_ARCHITECTURE.md
+├── services/
+│   └── emotion/
+│       ├── emotionClassifier.ts
+│       └── textSignals.ts
+│
+├── types/
+│   ├── emotion.ts
+│   └── assets.ts
+│
+└── index.ts
 ```
 
 ---
 
-## Data flow
+# Component Layer
+
+## AnimatedAvatar
+
+`AnimatedAvatar` is the public entry point of the SDK.
+
+Responsibilities include:
+
+- Receiving conversation state from the consumer application
+- Managing emotion updates
+- Initializing avatar assets
+- Coordinating avatar rendering
+- Exposing styling APIs
+- Handling loading state
+
+The component abstracts all internal logic so consumers only need to provide conversation-related props.
+
+---
+
+## AvatarRenderer
+
+`AvatarRenderer` is responsible only for rendering.
+
+Responsibilities include:
+
+- Displaying the current avatar image
+- Preloading avatar assets
+- Applying image transitions
+- Applying user-provided styling
+- Updating the rendered avatar when the emotion changes
+
+No emotion analysis or business logic exists in this component.
+
+---
+
+# Hook Layer
+
+## useAvatarController
+
+This hook contains the core logic of the SDK.
+
+Its responsibilities include:
+
+- Initializing the emotion classifier
+- Loading avatar assets
+- Managing emotion state
+- Analyzing incoming transcripts
+- Responding to speaking and listening states
+- Cleaning up allocated resources
+
+The hook exposes only the state required by `AnimatedAvatar`.
+
+---
+
+# Emotion Processing Pipeline
+
+The SDK processes text in multiple stages before updating the avatar.
 
 ```
-Consumer app
-    │
-    │  aiMessage, userMessage, isSpeaking, isListening
-    ▼
-AnimatedAvatar                          (src/components/AnimatedAvatar.tsx)
-    │
-    ├──► useAvatarController            (src/hooks/useAvatarController.ts)
-    │         │
-    │         │  text
-    │         ▼
-    │    extractTextSignalsWithML       (src/services/emotion/textSignals.ts)
-    │         │
-    │         │  rule-based signals (instant)
-    │         │  + ML emotion (async)
-    │         ▼
-    │    classifyEmotion                (src/services/emotion/emotionClassifier.ts)
-    │         │
-    │         │  ONNX pipeline (WASM, singleton)
-    │         ▼
-    │    EmotionLabel (13 classes)
-    │         │
-    │         │  mapped to
-    │         ▼
-    │    EmotionState (6 states)
-    │         │
-    │         ▼
-    │    emotionState + intensity
-    │
-    └──► AvatarRenderer                 (src/components/AvatarRenderer.tsx)
-              │
-              │  emotionImages[emotionState]  →  resolved URL
-              ▼
-         <img src={url} />              (consumer's public/avatars/*.webp)
+Incoming Transcript
+        │
+        ▼
+Rule-Based Analysis
+        │
+        ▼
+ML Emotion Classification
+        │
+        ▼
+Prediction Smoothing
+        │
+        ▼
+Emotion Mapping
+        │
+        ▼
+EmotionState
+        │
+        ▼
+Avatar Animation
+```
+
+The rule-based analysis extracts lightweight signals such as sentiment and content completeness, while the ML model provides emotion predictions. The SDK smooths consecutive predictions to reduce rapid avatar switching and produce more natural animations.
+
+---
+
+# Emotion Mapping
+
+The emotion classifier predicts one of several emotion labels which are mapped to avatar animation states.
+
+| Model Emotion | Avatar State |
+|---------------|--------------|
+| happiness | HAPPY |
+| love | ENCOURAGE |
+| desire | ENCOURAGE |
+| anger | CAUTION |
+| disgust | ANGRY |
+| fear | SHOCK |
+| sadness | SAD |
+| surprise | SURPRISED |
+| confusion | CONFUSE |
+| sarcasm | CONFUSE |
+| shame | SAD |
+| guilt | CAUTION |
+| Default / Neutral | LISTEN |
+
+---
+
+# Asset Management
+
+Avatar assets are managed internally by the SDK.
+
+During initialization:
+
+1. The SDK requests avatar images from the Hugging Face repository.
+2. Images are converted into Blob URLs for efficient rendering.
+3. If a remote asset cannot be loaded, the SDK automatically falls back to the bundled local asset.
+4. Images are preloaded before rendering begins to ensure smooth transitions.
+
+Consumers are **not required** to configure asset paths or manage avatar images.
+
+---
+
+# Model Management
+
+Emotion detection is powered by a Hugging Face Transformers model running entirely in the browser.
+
+The SDK automatically:
+
+- Loads the model during initialization
+- Performs a warm-up inference
+- Reuses a singleton classifier instance
+- Disposes resources when no longer required
+
+Browser caching ensures the model is downloaded only once.
+
+---
+
+# Avatar State Flow
+
+The avatar responds to conversation events as follows.
+
+```
+                User Starts Speaking
+                        │
+                        ▼
+                  LISTEN State
+
+                User Transcript
+                        │
+                        ▼
+             Emotion Classification
+                        │
+                        ▼
+             Emotion-specific Avatar
+
+                AI Starts Speaking
+                        │
+                        ▼
+               SPEAK_NEUTRAL State
+
+              Conversation Idle
+                        │
+                        ▼
+                  LISTEN State
 ```
 
 ---
 
-## Layers
+# Styling
 
-### Component layer — `src/components/`
+The SDK exposes styling through three mechanisms.
 
-**`AnimatedAvatar.tsx`** is the single entry point for most consumers. It:
-- Accepts all props and merges `emotionImages` overrides with `DEFAULT_AVATAR_IMAGES`
-- Wires `useAvatarController` for state management
-- Responds to `isSpeaking` and `isListening` to override emotion state from parent TTS/STT
-- Responds to `overrideEmotion` for manual control
-- Passes a fully resolved image map down to `AvatarRenderer`
+### Container Styling
 
-**`AvatarRenderer.tsx`** is a pure rendering component. It:
-- Accepts a fully resolved `Record<EmotionState, string>` image map — no path logic lives here
-- Preloads all emotion images on mount to eliminate flicker on state transitions
-- Applies CSS transitions for opacity, scale, and brightness driven by `intensity`
-- Tracks `isVideoSwitching` to expose a `loading` class during image swaps
+Applied to the outer wrapper.
 
-### Hook layer — `src/hooks/`
-
-Two hooks are provided at different levels of abstraction.
-
-**`useAvatarController`** is the lighter hook used internally by `AnimatedAvatar`. It:
-- Manages `emotionState` and `intensity` as local state
-- Exposes `setEmotion` for manual overrides
-- Exposes `analyzeEmotion(text)` which calls `extractTextSignalsWithML` and maps the result to an `EmotionState`
-- Handles speaking/listening state via `useEffect`
-
-**`useEmotionController`** is the fuller hook for consumers who want direct access to the emotion pipeline without using `AnimatedAvatar`. It adds:
-- ML classifier warm-up on mount and dispose on unmount
-- 1000ms debounce between ML inference calls (`ML_DEBOUNCE_MS`) to prevent flooding
-- In-flight guard (`mlInferenceInFlightRef`) so concurrent messages don't race
-- Separate `useEffect` blocks for `aiMessage` and `userMessage`
-
-Use `useAvatarController` when building on top of `AnimatedAvatar`. Use `useEmotionController` when building a fully custom rendering layer.
-
-### Service layer — `src/services/emotion/`
-
-**`textSignals.ts`** provides two functions:
-
-`extractTextSignals(text)` — synchronous, rule-based only, returns in under 1ms:
-- `contentCompleteness` — scores 0–1 based on STAR framework marker detection (situation, task, action, result keywords)
-- `sentimentValence` — scores -1 to +1 based on a curated positive/negative word set
-
-`extractTextSignalsWithML(text)` — async, runs both rule-based and ML:
-- Calls `classifyEmotion` from the classifier
-- Merges ML results (`modelEmotion`, `modelConfidence`, `emotionScores`) into the base signals
-- Returns the full `TextSignals` object
-
-**`emotionClassifier.ts`** manages the ONNX pipeline as a module-level singleton:
-- `getClassifier()` is private — initializes the pipeline on first call, returns the cached instance on subsequent calls, handles concurrent calls via a shared `loadPromise`
-- The model path is resolved at runtime using `import.meta.url` so it always points to `dist/models/onnx/` relative to the installed package location
-- `warmUpEmotionClassifier()` — runs a no-op inference to initialize the WASM runtime
-- `classifyEmotion(text)` — runs inference, returns top emotion + all 13 scores + confidence + timing
-- `disposeEmotionClassifier()` — tears down the pipeline and resets all singleton state
-- `isEmotionClassifierReady()` — sync boolean check for the loaded state
-
-### Types — `src/types/emotion.ts`
-
-Single source of truth for all shared types:
-
-```ts
-enum EmotionState {
-  LISTEN, SPEAK_NEUTRAL, ENCOURAGE, THINK, CAUTION, CELEBRATE
-}
-
-type EmotionLabel =
-  "sadness" | "anger" | "love" | "surprise" | "fear" | "happiness" |
-  "neutral" | "disgust" | "shame" | "guilt" | "confusion" | "desire" | "sarcasm"
-
-interface EmotionOutput {
-  state: EmotionState;
-  intensity: number;        // 0–1, drives CSS opacity/scale/brightness
-}
-
-interface TextSignals {
-  contentCompleteness: number;          // 0–1, STAR markers
-  sentimentValence: number;             // -1 to +1
-  modelEmotion: EmotionLabel | null;    // null until ML runs
-  modelConfidence: number;              // 0–1
-  emotionScores: Partial<Record<EmotionLabel, number>>;
-}
+```tsx
+containerClassName
 ```
 
-`EmotionLabel` is defined here and imported everywhere else. It is not duplicated in `emotionClassifier.ts`.
+### Avatar Styling
 
-### Constants — `src/constants/`
+Applied directly to the avatar image.
 
-**`defaultImages.ts`** exports `DEFAULT_AVATAR_IMAGES`, a `Record<EmotionState, string>` mapping each state to a `/avatars/*.webp` path. This is the convention consumers follow when placing files in their `public/` folder. It is merged with any `emotionImages` prop overrides inside `AnimatedAvatar`.
+```tsx
+avatarClassName
+```
+
+### Inline Styling
+
+Applied using the standard React `style` prop.
+
+```tsx
+style={{
+    width: "180px",
+    height: "180px"
+}}
+```
+
+Inline styles have the highest priority and override any class-based styling.
 
 ---
 
-## Model
+# Public API
 
-The bundled model is a fine-tuned BERT for sequence classification with the following configuration:
+The SDK intentionally exposes a minimal public API.
 
-| Property | Value |
-|---|---|
-| Architecture | BertForSequenceClassification |
-| Hidden size | 256 |
-| Attention heads | 4 |
-| Hidden layers | 4 |
-| Max position embeddings | 512 |
-| Labels | 13 |
-| Runtime | ONNX via `@huggingface/transformers` (WASM backend) |
-| Quantization | INT8 (`model_int8.onnx`) |
-| Inference time | ~30–80ms after warm-up on desktop |
+## Component
 
-### Label mapping
+```tsx
+AnimatedAvatar
+```
 
-| ID | Label | Avatar state |
-|---|---|---|
-| 0 | sadness | CAUTION |
-| 1 | anger | CAUTION |
-| 2 | love | ENCOURAGE |
-| 3 | surprise | THINK |
-| 4 | fear | CAUTION |
-| 5 | happiness | ENCOURAGE |
-| 6 | neutral | LISTEN |
-| 7 | disgust | CAUTION |
-| 8 | shame | CAUTION |
-| 9 | guilt | CAUTION |
-| 10 | confusion | THINK |
-| 11 | desire | ENCOURAGE |
-| 12 | sarcasm | CAUTION |
+## Props
+
+- aiMessage
+- userMessageInterim
+- userMessageFinal
+- isSpeaking
+- isListening
+- containerClassName
+- avatarClassName
+- style
+- onInitialized
+
+All emotion processing, asset management, rendering, and model initialization remain internal to the SDK.
 
 ---
 
-## Build
+# Build Output
 
-The package is built with Vite in library mode.
+The package is distributed as a standard JavaScript library.
 
 ```
-src/index.ts
-    │
-    ▼
-Vite (library mode)
-    ├── dist/index.js          # ES module
-    ├── dist/index.cjs         # CommonJS
-    ├── dist/index.d.ts        # Rolled-up type declarations
-    └── dist/models/onnx/      # Copied by vite-plugin-static-copy
+dist/
+├── index.js
+├── index.cjs
+├── index.d.ts
+└── assets/
 ```
 
-`vite-plugin-static-copy` copies `models/` into `dist/models/` at build time. The `assets/` folder is not part of the package — avatar images are the consumer's responsibility.
-
-Peer dependencies (`react`, `react-dom`, `@huggingface/transformers`, `onnxruntime-web`) are externalized and not bundled.
+The package exports both ES Module and CommonJS builds together with TypeScript declarations.
 
 ---
 
-## Key design decisions
+# Responsibilities
 
-**Model path via `import.meta.url`** — the model path is resolved relative to the emitted JS file using `new URL("../models/onnx/", import.meta.url).href`. This means the path is always correct regardless of where the consumer installs the package or what their base URL is.
+## SDK Responsibilities
 
-**Singleton pipeline** — the ONNX pipeline is initialized once per page load and reused. Initializing it per component mount would cause repeated 300–800ms load delays and wasted memory.
+- Emotion detection
+- Avatar rendering
+- Avatar asset management
+- Model loading
+- Avatar animation
+- Emotion state management
 
-**No bundled avatar images** — `.webp` files are excluded from the package entirely. This keeps the package small, gives consumers full control over asset hosting and CDN caching, and avoids base64 bloat in the bundle.
+## Consumer Responsibilities
 
-**Dual hook design** — `useAvatarController` is kept minimal for use inside `AnimatedAvatar`. `useEmotionController` adds production-grade concerns (debouncing, in-flight guards, lifecycle management) for consumers building custom UIs on top of the emotion pipeline.
+- Speech-to-Text integration
+- Text-to-Speech integration
+- LLM integration
+- Conversation management
+- User interface
 
-**`DEFAULT_AVATAR_IMAGES` as a named export** — rather than baking the default paths silently into the component, they are exported as a constant. Consumers can spread and override individual entries, or ignore the defaults entirely and pass a complete custom map.
+---
+
+# Design Principles
+
+The SDK has been designed around the following principles:
+
+- Browser-first architecture
+- Zero backend dependency
+- Minimal public API
+- Automatic model initialization
+- Automatic asset management
+- Smooth avatar transitions
+- Framework-independent conversation pipeline
+- Easy integration into existing React applications
