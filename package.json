@@ -1,5 +1,5 @@
 {
-  "name": "@navgurukul/avatar-sdk",
+  "name": "emotion-avatar-sdk",
   "version": "0.0.1",
   "description": "Real-time animated avatar SDK with emotion detection and avatar rendering",
   "type": "module",
@@ -47,10 +47,10 @@
     "react",
     "real-time"
   ],
-  "author": "Anshika-Tripathi",
-  "license": "MIT",
+  "author": "Navgurkul",
+  "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/navgurukul/avatar-sdk.git"
+    "url": "https://github.com/navgurukul/emotion-avatar-sdk.git"
   }
 }

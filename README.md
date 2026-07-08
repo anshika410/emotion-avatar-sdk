@@ -1,4 +1,4 @@
-# @navgurukul/avatar-sdk
+# emotion-avatar-sdk
 
 A React SDK for rendering a real-time animated avatar with emotion-aware animations.
 
@@ -22,7 +22,7 @@ The SDK automatically updates avatar expressions based on conversation state, AI
 Install the SDK:
 
 ```bash
-npm install @navgurukul/avatar-sdk
+npm install emotion-avatar-sdk
 ```
 
 Install the required peer dependencies if they are not already available in your application.
@@ -38,7 +38,7 @@ npm install react react-dom @huggingface/transformers onnxruntime-web
 Import the component and provide your application's conversation state.
 
 ```tsx
-import { AnimatedAvatar } from "@navgurukul/avatar-sdk";
+import { AnimatedAvatar } from "emotion-avatar-sdk";
 
 function App() {
   return (
@@ -67,13 +67,13 @@ The SDK automatically:
 
 The component expects the following values from your application.
 
-| Prop | Description |
-|------|-------------|
-| `aiMessage` | Current AI response text. |
+| Prop                 | Description                                                 |
+| -------------------- | ----------------------------------------------------------- |
+| `aiMessage`          | Current AI response text.                                   |
 | `userMessageInterim` | Live or partial transcript from your Speech-to-Text system. |
-| `userMessageFinal` | Final transcript after speech completion. |
-| `isSpeaking` | Set to `true` while Text-to-Speech is speaking. |
-| `isListening` | Set to `true` while Speech-to-Text is listening. |
+| `userMessageFinal`   | Final transcript after speech completion.                   |
+| `isSpeaking`         | Set to `true` while Text-to-Speech is speaking.             |
+| `isListening`        | Set to `true` while Speech-to-Text is listening.            |
 
 Example:
 
@@ -118,9 +118,7 @@ The SDK exposes styling hooks so the avatar can match your application's design.
 Apply styles to the outer container.
 
 ```tsx
-<AnimatedAvatar
-  containerClassName="rounded-xl border shadow-lg"
-/>
+<AnimatedAvatar containerClassName="rounded-xl border shadow-lg" />
 ```
 
 ### Avatar Styling
@@ -128,9 +126,7 @@ Apply styles to the outer container.
 Apply styles directly to the avatar image.
 
 ```tsx
-<AnimatedAvatar
-  avatarClassName="rounded-full"
-/>
+<AnimatedAvatar avatarClassName="rounded-full" />
 ```
 
 ### Inline Styling
@@ -143,7 +139,7 @@ Apply inline styles directly to the avatar.
     width: "180px",
     height: "180px",
     borderRadius: "20px",
-    opacity: 1
+    opacity: 1,
   }}
 />
 ```
@@ -154,17 +150,17 @@ Apply inline styles directly to the avatar.
 
 ## Component Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `aiMessage` | `string` | `""` | Current AI response. |
-| `userMessageInterim` | `string` | `""` | Live or partial transcript. |
-| `userMessageFinal` | `string` | `""` | Final transcript. |
-| `isSpeaking` | `boolean` | `false` | Indicates whether the AI is currently speaking. |
-| `isListening` | `boolean` | `false` | Indicates whether the application is currently listening. |
-| `containerClassName` | `string` | `undefined` | CSS class applied to the avatar container. |
-| `avatarClassName` | `string` | `undefined` | CSS class applied to the avatar image. |
-| `style` | `React.CSSProperties` | `undefined` | Inline styles applied to the avatar image. |
-| `onInitialized` | `(initialized: boolean) => void` | `undefined` | Callback invoked once the SDK has completed initialization. |
+| Prop                 | Type                             | Default     | Description                                                 |
+| -------------------- | -------------------------------- | ----------- | ----------------------------------------------------------- |
+| `aiMessage`          | `string`                         | `""`        | Current AI response.                                        |
+| `userMessageInterim` | `string`                         | `""`        | Live or partial transcript.                                 |
+| `userMessageFinal`   | `string`                         | `""`        | Final transcript.                                           |
+| `isSpeaking`         | `boolean`                        | `false`     | Indicates whether the AI is currently speaking.             |
+| `isListening`        | `boolean`                        | `false`     | Indicates whether the application is currently listening.   |
+| `containerClassName` | `string`                         | `undefined` | CSS class applied to the avatar container.                  |
+| `avatarClassName`    | `string`                         | `undefined` | CSS class applied to the avatar image.                      |
+| `style`              | `React.CSSProperties`            | `undefined` | Inline styles applied to the avatar image.                  |
+| `onInitialized`      | `(initialized: boolean) => void` | `undefined` | Callback invoked once the SDK has completed initialization. |
 
 ---
 
@@ -190,10 +186,10 @@ Apply inline styles directly to the avatar.
 
 ## Documentation
 
-The SDK architecture, implementation details, and package structure are documented separately in **`STRUCTURE.md`**.
+The SDK architecture, implementation details, and package structure are documented separately in **`PACKAGE_ARCHITECTURE.md`**.
 
 ---
 
 ## License
 
-MIT
+AGPL-3.0-or-later
