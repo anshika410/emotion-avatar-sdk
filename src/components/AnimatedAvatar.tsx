@@ -31,11 +31,10 @@ export function AnimatedAvatar({
   style,
 }: AnimatedAvatarProps) {
   const {
-    emotionState,
+    emotionId,
     setEmotion,
     analyzeEmotion,
     isInitialized,
-    resolvedBlobImages,
   } = useAvatarController({
     isSpeaking,
     isListening,
@@ -61,7 +60,7 @@ export function AnimatedAvatar({
     const charCount = userMessageInterim.length;
 
     if (wordCount > 3 || charCount > 20) {
-      analyzeEmotion(userMessageInterim).then((detected: EmotionState) =>
+      analyzeEmotion(userMessageInterim).then((detected: string) =>
         setEmotion(detected)
       );
     }
@@ -114,7 +113,7 @@ export function AnimatedAvatar({
   }, [userMessageFinal, isInitialized, analyzeEmotion, setEmotion]);
 
   // Loading state
-  if (!isInitialized || !resolvedBlobImages) {
+  if (!isInitialized) {
     const loadingSize = 260; // fallback size
     return (
       <div
@@ -165,8 +164,7 @@ export function AnimatedAvatar({
   return (
     <div className={containerClassName}>
       <AvatarRenderer
-        emotionState={emotionState}
-        emotionImages={resolvedBlobImages}
+        emotionId={emotionId}
         className={avatarClassName}
         style={style}
       />
