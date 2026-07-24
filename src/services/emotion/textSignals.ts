@@ -1,4 +1,8 @@
-import type { TextSignals } from "../../types/emotion";
+import type {
+  TextSignals,
+  EmotionExplanation,
+  EmotionExplanationChunk,
+} from "../../types/emotion";
 import { classifyEmotion } from "./emotionClassifier";
 import type { EmotionLabel } from "../../types/emotion";
 
@@ -34,6 +38,26 @@ const NEGATIVE_WORDS = new Set([
   "messy", "complicated", "unclear", "wrong", "error", "crash", "crashed",
 ]);
 
+const NEGATION_WORDS = new Set([
+  "not", "never", "no", "none", "nobody", "nothing", "neither", "nor",
+  "cannot", "cant", "can't", "dont", "don't", "didnt", "didn't", "wont", "won't",
+  "isnt", "isn't", "wasnt", "wasn't", "without",
+]);
+
+const INTENSIFIER_WORDS = new Set([
+  "very", "really", "so", "too", "extremely", "highly", "super", "totally",
+  "absolutely", "incredibly", "deeply", "strongly", "quite", "massively",
+]);
+
+const CONTRAST_WORDS = new Set([
+  "but", "however", "though", "although", "yet", "instead", "rather",
+]);
+
+const EMOTION_HINT_WORDS = new Set([
+  "happy", "sad", "angry", "afraid", "fear", "scared", "surprised", "confused",
+  "frustrated", "excited", "nervous", "worried", "love", "hate", "guilty", "ashamed",
+]);
+
 function computeValence(text: string): number {
   if (!text.trim()) return 0;
   const words = text.toLowerCase().split(/\W+/);
@@ -66,6 +90,181 @@ let lastEmittedEmotion: string = 'neutral';
 
 /** Confidence of the last emitted emotion (from the SMOOTHED scores) */
 let lastEmittedConfidence: number = 0;
+
+/** Last analyzed transcript for explanation diffing. */
+let lastTranscript = "";
+
+function tokenize(text: string): string[] {
+  return text.trim().split(/\s+/).filter(Boolean);
+}
+
+function computeAddedText(previous: string, current: string): string {
+  const prev = previous.trim();
+  const curr = current.trim();
+  if (!curr) return "";
+  if (!prev) return curr;
+  if (curr.startsWith(prev)) {
+    return curr.slice(prev.length).trim();
+  }
+
+  const prevWords = tokenize(prev);
+  const currWords = tokenize(curr);
+
+  let prefix = 0;
+  while (
+    prefix < prevWords.length &&
+    prefix < currWords.length &&
+    prevWords[prefix].toLowerCase() === currWords[prefix].toLowerCase()
+  ) {
+    prefix += 1;
+  }
+
+  let prevSuffix = prevWords.length - 1;
+  let currSuffix = currWords.length - 1;
+  while (
+    prevSuffix >= prefix &&
+    currSuffix >= prefix &&
+    prevWords[prevSuffix].toLowerCase() === currWords[currSuffix].toLowerCase()
+  ) {
+    prevSuffix -= 1;
+    currSuffix -= 1;
+  }
+
+  const addedWords = currWords.slice(prefix, currSuffix + 1);
+  return addedWords.join(" ").trim();
+}
+
+function splitIntoChunks(text: string): string[] {
+  return text
+    .split(/(?<=[.!?,;:])\s+|\s+(?=but\b|however\b|although\b|though\b|yet\b)/i)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function countWordHits(words: string[], dictionary: Set<string>): number {
+  let hits = 0;
+  for (const word of words) {
+    if (dictionary.has(word)) hits += 1;
+  }
+  return hits;
+}
+
+function getMatchedWords(words: string[], dictionary: Set<string>): string[] {
+  return Array.from(new Set(words.filter((word) => dictionary.has(word))));
+}
+
+function scoreChunk(chunk: string): EmotionExplanationChunk {
+  const words = chunk.toLowerCase().split(/\W+/).filter(Boolean);
+  const valence = computeValence(chunk);
+  const hasNegation = countWordHits(words, NEGATION_WORDS) > 0;
+  const hasIntensifier = countWordHits(words, INTENSIFIER_WORDS) > 0;
+  const hasContrast = countWordHits(words, CONTRAST_WORDS) > 0;
+
+  const matchedKeywords = {
+    positive: getMatchedWords(words, POSITIVE_WORDS),
+    negative: getMatchedWords(words, NEGATIVE_WORDS),
+    emotion: getMatchedWords(words, EMOTION_HINT_WORDS),
+    negation: getMatchedWords(words, NEGATION_WORDS),
+    intensifier: getMatchedWords(words, INTENSIFIER_WORDS),
+    contrast: getMatchedWords(words, CONTRAST_WORDS),
+  };
+
+  const keywordHits =
+    matchedKeywords.positive.length +
+    matchedKeywords.negative.length +
+    matchedKeywords.emotion.length;
+
+  const valenceScore = Math.abs(valence);
+  const negationBonus = hasNegation ? 0.8 : 0;
+  const intensifierBonus = hasIntensifier ? 0.6 : 0;
+  const contrastBonus = hasContrast ? 0.5 : 0;
+  const lengthBonus = Math.min(words.length / 12, 0.4);
+  const score =
+    valenceScore +
+    keywordHits * 1.2 +
+    negationBonus +
+    intensifierBonus +
+    contrastBonus +
+    lengthBonus;
+
+  return {
+    text: chunk,
+    score,
+    valence,
+    hasNegation,
+    hasIntensifier,
+    hasContrast,
+    keywordHits,
+    matchedKeywords,
+    scoreBreakdown: {
+      valence: valenceScore,
+      keywordHits,
+      negationBonus,
+      intensifierBonus,
+      contrastBonus,
+      lengthBonus,
+      total: score,
+    },
+  };
+}
+
+function buildChunkReason(chunk: EmotionExplanationChunk | null): string {
+  if (!chunk) {
+    return "No high-signal phrase found in this turn.";
+  }
+
+  const parts: string[] = [];
+  const keywordWords = [
+    ...chunk.matchedKeywords.positive,
+    ...chunk.matchedKeywords.negative,
+    ...chunk.matchedKeywords.emotion,
+  ];
+  if (keywordWords.length > 0) {
+    parts.push(`keywords: ${keywordWords.join(", ")}`);
+  }
+  if (chunk.matchedKeywords.negation.length > 0) {
+    parts.push(`negation: ${chunk.matchedKeywords.negation.join(", ")}`);
+  }
+  if (chunk.matchedKeywords.intensifier.length > 0) {
+    parts.push(`intensifier: ${chunk.matchedKeywords.intensifier.join(", ")}`);
+  }
+  if (chunk.matchedKeywords.contrast.length > 0) {
+    parts.push(`contrast: ${chunk.matchedKeywords.contrast.join(", ")}`);
+  }
+  if (chunk.valence > 0.2) parts.push(`positive valence ${chunk.valence.toFixed(2)}`);
+  if (chunk.valence < -0.2) parts.push(`negative valence ${chunk.valence.toFixed(2)}`);
+
+  if (parts.length === 0) {
+    return "Explanation is based on weak lexical cues from the selected phrase.";
+  }
+
+  return `Top phrase selected because ${parts.join(", ")}.`;
+}
+
+function buildEmotionExplanation(previousTranscript: string, currentTranscript: string): EmotionExplanation {
+  const addedText = computeAddedText(previousTranscript, currentTranscript);
+  const source = addedText ? "addedText" : "fullTranscript";
+  const chunksSource = addedText || currentTranscript;
+  const chunks = splitIntoChunks(chunksSource).map(scoreChunk);
+  const topChunk = chunks.length > 0
+    ? chunks.reduce((best, current) => (current.score > best.score ? current : best))
+    : null;
+  const chunkReason = buildChunkReason(topChunk);
+
+  const reason = source === "addedText"
+    ? chunkReason
+    : `No new text detected, so explanation is based on the full current transcript. ${chunkReason}`;
+
+  return {
+    previousTranscript,
+    currentTranscript,
+    addedText,
+    source,
+    reason,
+    topChunk,
+    chunks,
+  };
+}
 
 /**
  * Update rolling window and return element‑wise average of all scores.
@@ -128,6 +327,7 @@ export function resetEmotionProcessing(): void {
   // confidenceHistory = [];
   lastEmittedEmotion = 'neutral';
   lastEmittedConfidence = 0;
+  lastTranscript = "";
 }
 
 // ──────────────────── Public API ────────────────────
@@ -155,13 +355,21 @@ export function extractTextSignals(transcript: string): TextSignals {
  */
 export async function extractTextSignalsWithML(
   transcript: string
-): Promise<TextSignals & { topEmotions?: Array<{ emotion: string; score: number }> }> {
+): Promise<TextSignals & {
+  topEmotions?: Array<{ emotion: string; score: number }>;
+  explanation?: EmotionExplanation;
+}> {
   const base = extractTextSignals(transcript);
+  const explanation = buildEmotionExplanation(lastTranscript, transcript);
+  lastTranscript = transcript;
 
   const result = await classifyEmotion(transcript);
   if (!result) {
     // If ML fails, return only rule‑based signals (no ML fields)
-    return base;
+    return {
+      ...base,
+      explanation,
+    };
   }
 
   // 1. Smooth the raw scores over the last N predictions
@@ -201,11 +409,21 @@ export async function extractTextSignalsWithML(
     }
   }
 
+  console.log("[Emotion Debug]", {
+    transcript,
+    emotion: emittedEmotion,
+    confidence: emittedConfidence,
+    scores: smoothedScores,
+    topEmotions: topTwo,
+    explanation,
+  });
+  
   return {
     ...base,
     modelEmotion: emittedEmotion as EmotionLabel,
     modelConfidence: emittedConfidence,
     emotionScores: smoothedScores,      // smoothed probabilities
     topEmotions: topTwo,               // additional info for debugging or advanced use
+    explanation,
   };
 }

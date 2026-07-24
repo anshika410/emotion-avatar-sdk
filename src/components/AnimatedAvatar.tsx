@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { EmotionState } from "../types/emotion";
+import { EmotionState, type EmotionDebugInfo } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
 import { useAvatarController } from "../hooks/useAvatarController";
 import { resetEmotionProcessing } from "../services/emotion/textSignals";
@@ -11,6 +11,7 @@ export interface AnimatedAvatarProps {
   isSpeaking?: boolean;
   isListening?: boolean;
   onInitialized?: (isInitialized: boolean) => void;
+  onEmotionDebug?: (info: EmotionDebugInfo) => void;
   /** CSS class for the outer wrapper (layout container) */
   containerClassName?: string;
   /** CSS class for the avatar image (optional) */
@@ -26,6 +27,7 @@ export function AnimatedAvatar({
   isSpeaking = false,
   isListening = false,
   onInitialized,
+  onEmotionDebug,
   containerClassName,
   avatarClassName,
   style,
@@ -33,7 +35,7 @@ export function AnimatedAvatar({
   const {
     emotionState,
     setEmotion,
-    analyzeEmotion,
+    analyzeEmotionDetails,
     isInitialized,
     resolvedBlobImages,
   } = useAvatarController({
@@ -52,7 +54,7 @@ export function AnimatedAvatar({
     if (aiMessage && isInitialized && isSpeaking) {
       setEmotion(EmotionState.SPEAK_NEUTRAL);
     }
-  }, [aiMessage, isInitialized, analyzeEmotion, setEmotion]);
+  }, [aiMessage, isInitialized, setEmotion, isSpeaking]);
 
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
@@ -61,9 +63,11 @@ export function AnimatedAvatar({
     const charCount = userMessageInterim.length;
 
     if (wordCount > 3 || charCount > 20) {
-      analyzeEmotion(userMessageInterim).then((detected: EmotionState) =>
-        setEmotion(detected)
-      );
+      analyzeEmotionDetails(userMessageInterim).then((details) => {
+        if (!details) return;
+        setEmotion(details.state);
+        onEmotionDebug?.(details);
+      });
     }
 
     // Restart inactivity timer
@@ -81,17 +85,20 @@ export function AnimatedAvatar({
       }
     };
 
-  }, [userMessageInterim, isInitialized, analyzeEmotion, setEmotion]);
+  }, [userMessageInterim, isInitialized, analyzeEmotionDetails, setEmotion, onEmotionDebug]);
 
 
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
 
     const processFinalEmotion = async () => {
-      const detected = await analyzeEmotion(userMessageFinal);
+      const detected = await analyzeEmotionDetails(userMessageFinal);
+
+      if (!detected) return;
 
       // Display the detected emotion
-      setEmotion(detected);
+      setEmotion(detected.state);
+      onEmotionDebug?.(detected);
 
       // Clear any previous final reset timeout
       if (finalResetTimeout.current) {
@@ -111,7 +118,7 @@ export function AnimatedAvatar({
         clearTimeout(finalResetTimeout.current);
       }
     };
-  }, [userMessageFinal, isInitialized, analyzeEmotion, setEmotion]);
+  }, [userMessageFinal, isInitialized, analyzeEmotionDetails, setEmotion, onEmotionDebug]);
 
   // Loading state
   if (!isInitialized || !resolvedBlobImages) {

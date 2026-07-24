@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { EmotionState } from "../types/emotion";
+import { EmotionState, type EmotionDebugInfo } from "../types/emotion";
 import { extractTextSignalsWithML } from "../services/emotion/textSignals";
 import { DEFAULT_AVATAR_IMAGES, LOCAL_FALLBACK_IMAGES } from "../constants/defaultImages";
 import { warmUpEmotionClassifier, disposeEmotionClassifier } from "../services/emotion/emotionClassifier";
@@ -17,6 +17,7 @@ export interface AvatarControllerReturn {
   emotionState: EmotionState;
   setEmotion: (emotion: EmotionState) => void;
   analyzeEmotion: (text: string) => Promise<EmotionState>;
+  analyzeEmotionDetails: (text: string) => Promise<EmotionDebugInfo | null>;
 }
 
 export function useAvatarController({
@@ -31,6 +32,36 @@ export function useAvatarController({
     string
   > | null>(null);
   const lastImagesRef = useRef<string | null>(null);
+
+  const mapEmotionLabelToState = useCallback((emotionLabel: EmotionDebugInfo["modelEmotion"]) => {
+    switch (emotionLabel) {
+      case "happiness":
+        return EmotionState.HAPPY;
+      case "love":
+      case "desire":
+        return EmotionState.ENCOURAGE;
+      case "anger":
+        return EmotionState.CAUTION;
+      case "disgust":
+        return EmotionState.ANGRY;
+      case "fear":
+        return EmotionState.SHOCK;
+      case "shame":
+        return EmotionState.SAD;
+      case "guilt":
+        return EmotionState.CAUTION;
+      case "sarcasm":
+        return EmotionState.CONFUSE;
+      case "sadness":
+        return EmotionState.SAD;
+      case "surprise":
+        return EmotionState.SURPRISED;
+      case "confusion":
+        return EmotionState.CONFUSE;
+      default:
+        return EmotionState.LISTEN;
+    }
+  }, []);
 
   // Warm up ML emotion classifier on mount
   useEffect(() => {
@@ -105,55 +136,46 @@ export function useAvatarController({
     setEmotionState(emotion);
   }, []);
 
-  // Analyze emotion from text
-  const analyzeEmotion = useCallback(
-    async (text: string): Promise<EmotionState> => {
-      if (!text.trim()) return EmotionState.LISTEN;
+  const analyzeEmotionDetails = useCallback(
+    async (text: string): Promise<EmotionDebugInfo | null> => {
+      if (!text.trim()) return null;
 
       try {
         const signals = await extractTextSignalsWithML(text);
 
+        let state = EmotionState.LISTEN;
+
         if (signals.modelEmotion) {
-          switch (signals.modelEmotion) {
-            case "happiness":
-              return EmotionState.HAPPY;
-            case "love":
-              return EmotionState.ENCOURAGE;
-            case "desire":
-              return EmotionState.ENCOURAGE;
-            case "anger":
-              return EmotionState.CAUTION;
-            case "disgust":
-              return EmotionState.ANGRY;
-            case "fear":
-              return EmotionState.SHOCK;
-            case "shame":
-              return EmotionState.SAD
-            case "guilt":
-              return EmotionState.CAUTION
-            case "sarcasm":
-              return EmotionState.CONFUSE;
-            case "sadness":
-              return EmotionState.SAD;
-            case "surprise":
-              return EmotionState.SURPRISED;
-            case "confusion":
-              return EmotionState.CONFUSE;
-            default:
-              return EmotionState.LISTEN;
-          }
+          state = mapEmotionLabelToState(signals.modelEmotion);
+        } else if (signals.sentimentValence > 0.3) {
+          state = EmotionState.ENCOURAGE;
+        } else if (signals.sentimentValence < -0.3) {
+          state = EmotionState.CAUTION;
         }
 
-        // Fallback to sentiment valence
-        if (signals.sentimentValence > 0.3) return EmotionState.ENCOURAGE;
-        if (signals.sentimentValence < -0.3) return EmotionState.CAUTION;
-
-        return EmotionState.LISTEN;
+        return {
+          transcript: text,
+          state,
+          contentCompleteness: signals.contentCompleteness,
+          sentimentValence: signals.sentimentValence,
+          modelEmotion: signals.modelEmotion,
+          modelConfidence: signals.modelConfidence,
+          emotionScores: signals.emotionScores,
+          topEmotions: signals.topEmotions,
+          explanation: signals.explanation,
+        };
       } catch (error) {
         console.warn("[useAvatarController] Emotion analysis failed:", error);
-        return EmotionState.LISTEN;
+        return null;
       }
-    }, []);
+    }, [mapEmotionLabelToState]);
+
+  // Analyze emotion from text
+  const analyzeEmotion = useCallback(
+    async (text: string): Promise<EmotionState> => {
+      const details = await analyzeEmotionDetails(text);
+      return details?.state ?? EmotionState.LISTEN;
+    }, [analyzeEmotionDetails]);
 
   // Update emotion based on speaking/listening state
   useEffect(() => {
@@ -173,5 +195,6 @@ export function useAvatarController({
     emotionState,
     setEmotion,
     analyzeEmotion,
+    analyzeEmotionDetails,
   };
 }

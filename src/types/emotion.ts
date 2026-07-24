@@ -52,3 +52,52 @@ export interface TextSignals {
   /** All 6 emotion probabilities (empty until model runs) */
   emotionScores: Partial<Record<EmotionLabel, number>>;
 }
+
+export interface EmotionExplanationChunk {
+  text: string;
+  score: number;
+  valence: number;
+  hasNegation: boolean;
+  hasIntensifier: boolean;
+  hasContrast: boolean;
+  keywordHits: number;
+  matchedKeywords: {
+    positive: string[];
+    negative: string[];
+    emotion: string[];
+    negation: string[];
+    intensifier: string[];
+    contrast: string[];
+  };
+  scoreBreakdown: {
+    valence: number;
+    keywordHits: number;
+    negationBonus: number;
+    intensifierBonus: number;
+    contrastBonus: number;
+    lengthBonus: number;
+    total: number;
+  };
+}
+
+export interface EmotionExplanation {
+  previousTranscript: string;
+  currentTranscript: string;
+  addedText: string;
+  source: "addedText" | "fullTranscript";
+  reason: string;
+  topChunk: EmotionExplanationChunk | null;
+  chunks: EmotionExplanationChunk[];
+}
+
+/** Debug payload for showing the raw analysis behind a detected emotion. */
+export interface EmotionDebugInfo extends TextSignals {
+  /** Original transcript that was analyzed. */
+  transcript: string;
+  /** Emotion state used by the avatar renderer. */
+  state: EmotionState;
+  /** Top 2 emotions from the smoothed model output. */
+  topEmotions?: Array<{ emotion: string; score: number }>;
+  /** Why this emotion was likely predicted for this turn. */
+  explanation?: EmotionExplanation;
+}
