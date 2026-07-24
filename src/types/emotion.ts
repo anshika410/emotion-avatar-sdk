@@ -43,6 +43,12 @@ export type EmotionLabel =
 export interface TextSignals {
   /** 0–1 content completeness (STAR framework markers) */
   contentCompleteness: number;
+  /** Number of tokens in the transcript. */
+  tokenCount: number;
+  /** Model inference latency in milliseconds. */
+  inferenceLatencyMs: number;
+  /** End-to-end analysis latency in milliseconds. */
+  analysisLatencyMs: number;
   /** -1 to +1 sentiment valence */
   sentimentValence: number;
   /** Top emotion from DistilBERT model (null until model runs) */
@@ -51,6 +57,30 @@ export interface TextSignals {
   modelConfidence: number;
   /** All 6 emotion probabilities (empty until model runs) */
   emotionScores: Partial<Record<EmotionLabel, number>>;
+  /** Count of emotion labels above the active threshold. */
+  emotionCount: number;
+  /** 0–1 complexity score where 1 means many competing emotion cues. */
+  complexityScore: number;
+  /** Breakdown of complexity contributors. */
+  complexityBreakdown: {
+    topGapComplexity: number;
+    entropyComplexity: number;
+    lexicalConflictComplexity: number;
+    emotionCountComplexity: number;
+    total: number;
+    notes: string[];
+  };
+  /** 0–1 uncertainty score where 1 means most uncertain. */
+  uncertaintyScore: number;
+  /** Breakdown of uncertainty contributors. */
+  uncertaintyBreakdown: {
+    confidenceUncertainty: number;
+    gapUncertainty: number;
+    entropyUncertainty: number;
+    lexicalUncertainty: number;
+    total: number;
+    notes: string[];
+  };
 }
 
 export interface EmotionExplanationChunk {
@@ -61,6 +91,7 @@ export interface EmotionExplanationChunk {
   hasIntensifier: boolean;
   hasContrast: boolean;
   keywordHits: number;
+  triggerWords: string[];
   matchedKeywords: {
     positive: string[];
     negative: string[];

@@ -169,6 +169,15 @@ function scoreChunk(chunk: string): EmotionExplanationChunk {
     contrast: getMatchedWords(words, CONTRAST_WORDS),
   };
 
+  const triggerWords = Array.from(new Set([
+    ...matchedKeywords.positive,
+    ...matchedKeywords.negative,
+    ...matchedKeywords.emotion,
+    ...matchedKeywords.negation,
+    ...matchedKeywords.intensifier,
+    ...matchedKeywords.contrast,
+  ]));
+
   const keywordHits =
     matchedKeywords.positive.length +
     matchedKeywords.negative.length +
@@ -195,6 +204,7 @@ function scoreChunk(chunk: string): EmotionExplanationChunk {
     hasIntensifier,
     hasContrast,
     keywordHits,
+    triggerWords,
     matchedKeywords,
     scoreBreakdown: {
       valence: valenceScore,
@@ -214,13 +224,8 @@ function buildChunkReason(chunk: EmotionExplanationChunk | null): string {
   }
 
   const parts: string[] = [];
-  const keywordWords = [
-    ...chunk.matchedKeywords.positive,
-    ...chunk.matchedKeywords.negative,
-    ...chunk.matchedKeywords.emotion,
-  ];
-  if (keywordWords.length > 0) {
-    parts.push(`keywords: ${keywordWords.join(", ")}`);
+  if (chunk.triggerWords.length > 0) {
+    parts.push(`keywords: ${chunk.triggerWords.join(", ")}`);
   }
   if (chunk.matchedKeywords.negation.length > 0) {
     parts.push(`negation: ${chunk.matchedKeywords.negation.join(", ")}`);
@@ -333,16 +338,188 @@ export function resetEmotionProcessing(): void {
 // ──────────────────── Public API ────────────────────
 
 /** Default empty ML fields */
-const EMPTY_ML: Pick<TextSignals, "modelEmotion" | "modelConfidence" | "emotionScores"> = {
+const EMPTY_ML: Pick<TextSignals, "modelEmotion" | "modelConfidence" | "emotionScores" | "inferenceLatencyMs" | "analysisLatencyMs" | "emotionCount" | "complexityScore" | "complexityBreakdown" | "uncertaintyScore" | "uncertaintyBreakdown"> = {
   modelEmotion: null,
   modelConfidence: 0,
   emotionScores: {},
+  inferenceLatencyMs: 0,
+  analysisLatencyMs: 0,
+  emotionCount: 0,
+  complexityScore: 0,
+  complexityBreakdown: {
+    topGapComplexity: 0,
+    entropyComplexity: 0,
+    lexicalConflictComplexity: 0,
+    emotionCountComplexity: 0,
+    total: 0,
+    notes: ["ML not available"],
+  },
+  uncertaintyScore: 1,
+  uncertaintyBreakdown: {
+    confidenceUncertainty: 1,
+    gapUncertainty: 1,
+    entropyUncertainty: 1,
+    lexicalUncertainty: 1,
+    total: 1,
+    notes: ["ML not available"],
+  },
 };
+
+function countTokens(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function computeNormalizedEntropy(scores: Record<string, number>): number {
+  const values = Object.values(scores).filter((score) => score > 0);
+  const total = values.reduce((sum, score) => sum + score, 0);
+  if (total <= 0 || values.length <= 1) return 0;
+
+  let entropy = 0;
+  for (const score of values) {
+    const probability = score / total;
+    entropy -= probability * Math.log(probability);
+  }
+
+  return clamp01(entropy / Math.log(values.length));
+}
+
+function computeLexicalUncertainty(explanation: EmotionExplanation | undefined): { score: number; notes: string[] } {
+  if (!explanation) {
+    return { score: 0.4, notes: ["No explanation available"] };
+  }
+
+  const topChunk = explanation.topChunk;
+  if (!topChunk) {
+    return { score: 0.6, notes: ["No strong chunk identified"] };
+  }
+
+  const notes: string[] = [];
+  let score = 0;
+
+  if (topChunk.triggerWords.length === 0) {
+    score += 0.35;
+    notes.push("No trigger words found");
+  }
+
+  const hasPositive = topChunk.matchedKeywords.positive.length > 0;
+  const hasNegative = topChunk.matchedKeywords.negative.length > 0;
+  if (hasPositive && hasNegative) {
+    score += 0.35;
+    notes.push("Positive and negative cues in same chunk");
+  }
+
+  if (topChunk.hasNegation) {
+    score += 0.15;
+    notes.push("Negation present");
+  }
+
+  if (topChunk.hasContrast) {
+    score += 0.15;
+    notes.push("Contrast present");
+  }
+
+  if (topChunk.hasIntensifier) {
+    score += 0.05;
+    notes.push("Intensifier present");
+  }
+
+  return { score: clamp01(score), notes };
+}
+
+function computeComplexity(
+  smoothedScores: Record<string, number>,
+  topTwo: Array<{ emotion: string; score: number }>,
+  explanation: EmotionExplanation | undefined,
+): TextSignals["complexityBreakdown"] {
+  const topScore = topTwo[0]?.score ?? 0;
+  const secondScore = topTwo[1]?.score ?? 0;
+  const topGapComplexity = clamp01(1 - Math.max(0, topScore - secondScore));
+  const entropyComplexity = computeNormalizedEntropy(smoothedScores);
+
+  const topChunk = explanation?.topChunk;
+  let lexicalConflictComplexity = 0;
+  const notes: string[] = [];
+
+  if (topChunk) {
+    const hasPositive = topChunk.matchedKeywords.positive.length > 0;
+    const hasNegative = topChunk.matchedKeywords.negative.length > 0;
+    if (hasPositive && hasNegative) {
+      lexicalConflictComplexity = 1;
+      notes.push("Positive and negative cues in same chunk");
+    } else if ((hasPositive || hasNegative) && topChunk.hasContrast) {
+      lexicalConflictComplexity = 0.85;
+      notes.push("Contrast with emotional cue");
+    } else if ((hasPositive || hasNegative) && topChunk.hasNegation) {
+      lexicalConflictComplexity = 0.75;
+      notes.push("Negation with emotional cue");
+    } else if (topChunk.triggerWords.length === 0) {
+      lexicalConflictComplexity = 0.35;
+      notes.push("No strong emotional trigger words");
+    } else {
+      lexicalConflictComplexity = 0.25;
+    }
+  } else {
+    lexicalConflictComplexity = 0.4;
+    notes.push("No top chunk available");
+  }
+
+  const emotionCount = Object.values(smoothedScores).filter((score) => score >= 0.15).length;
+  const emotionCountComplexity = clamp01(Math.max(0, emotionCount - 1) / 4);
+  const total = clamp01(
+    topGapComplexity * 0.35 +
+    entropyComplexity * 0.25 +
+    lexicalConflictComplexity * 0.25 +
+    emotionCountComplexity * 0.15,
+  );
+
+  return {
+    topGapComplexity,
+    entropyComplexity,
+    lexicalConflictComplexity,
+    emotionCountComplexity,
+    total,
+    notes,
+  };
+}
+
+function computeUncertainty(
+  smoothedScores: Record<string, number>,
+  topTwo: Array<{ emotion: string; score: number }>,
+  explanation: EmotionExplanation | undefined,
+): TextSignals["uncertaintyBreakdown"] {
+  const topScore = topTwo[0]?.score ?? 0;
+  const secondScore = topTwo[1]?.score ?? 0;
+  const confidenceUncertainty = clamp01(1 - topScore);
+  const gapUncertainty = clamp01(1 - Math.max(0, topScore - secondScore));
+  const entropyUncertainty = computeNormalizedEntropy(smoothedScores);
+  const lexical = computeLexicalUncertainty(explanation);
+
+  const total = clamp01(
+    confidenceUncertainty * 0.35 +
+    gapUncertainty * 0.30 +
+    entropyUncertainty * 0.20 +
+    lexical.score * 0.15,
+  );
+
+  return {
+    confidenceUncertainty,
+    gapUncertainty,
+    entropyUncertainty,
+    lexicalUncertainty: lexical.score,
+    total,
+    notes: lexical.notes,
+  };
+}
 
 /** Instant rule‑based extraction (no ML). Returns in <1 ms. */
 export function extractTextSignals(transcript: string): TextSignals {
   return {
     contentCompleteness: computeCompleteness(transcript),
+    tokenCount: countTokens(transcript),
     sentimentValence: computeValence(transcript),
     ...EMPTY_ML,
   };
@@ -359,6 +536,7 @@ export async function extractTextSignalsWithML(
   topEmotions?: Array<{ emotion: string; score: number }>;
   explanation?: EmotionExplanation;
 }> {
+  const analysisStartMs = performance.now();
   const base = extractTextSignals(transcript);
   const explanation = buildEmotionExplanation(lastTranscript, transcript);
   lastTranscript = transcript;
@@ -368,6 +546,7 @@ export async function extractTextSignalsWithML(
     // If ML fails, return only rule‑based signals (no ML fields)
     return {
       ...base,
+      analysisLatencyMs: performance.now() - analysisStartMs,
       explanation,
     };
   }
@@ -381,6 +560,8 @@ export async function extractTextSignalsWithML(
   const topScore = topTwo[0]?.score ?? 0;
   const secondScore = topTwo[1]?.score ?? 0;
   const diff = topScore - secondScore;
+  const complexityBreakdown = computeComplexity(smoothedScores, topTwo, explanation);
+  const uncertaintyBreakdown = computeUncertainty(smoothedScores, topTwo, explanation);
 
   // 3. Decide which emotion to emit
   let emittedEmotion: string;
@@ -413,6 +594,12 @@ export async function extractTextSignalsWithML(
     transcript,
     emotion: emittedEmotion,
     confidence: emittedConfidence,
+    inferenceLatencyMs: result.inferenceMs,
+    analysisLatencyMs: performance.now() - analysisStartMs,
+    complexityScore: complexityBreakdown.total,
+    complexityBreakdown,
+    uncertaintyScore: uncertaintyBreakdown.total,
+    uncertaintyBreakdown,
     scores: smoothedScores,
     topEmotions: topTwo,
     explanation,
@@ -423,6 +610,13 @@ export async function extractTextSignalsWithML(
     modelEmotion: emittedEmotion as EmotionLabel,
     modelConfidence: emittedConfidence,
     emotionScores: smoothedScores,      // smoothed probabilities
+    inferenceLatencyMs: result.inferenceMs,
+    analysisLatencyMs: performance.now() - analysisStartMs,
+    emotionCount: Object.values(smoothedScores).filter((score) => score >= 0.15).length,
+    complexityScore: complexityBreakdown.total,
+    complexityBreakdown,
+    uncertaintyScore: uncertaintyBreakdown.total,
+    uncertaintyBreakdown,
     topEmotions: topTwo,               // additional info for debugging or advanced use
     explanation,
   };
