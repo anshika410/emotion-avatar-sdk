@@ -1,5 +1,6 @@
 import React from "react";
 import "./zoe-mascot/core/zoe-mascot.js";
+import speakingAvatar from "../assets/speaking-edited.webp";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -46,16 +47,34 @@ export function AvatarRenderer({
   };
 
   const mergedStyle = { ...defaultContainerStyle, ...userStyle };
+  const useSpeakingAvatar = emotionId === "speaking-edited.webp";
 
+  const speakingAvatarStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+    objectPosition: "center center",
+    transform: "scale(1.22) translateY(2px)",
+    transformOrigin: "center center",
+    display: "block",
+  };
   return (
     <div style={mergedStyle} className={className}>
-      <zoe-mascot
-        emotion={emotionId}
-        autoplay
-        loop
-        speed={speed}
-        style={{ width: "100%", height: "100%" }}
-      />
+      {useSpeakingAvatar ? (
+        <img
+          src={speakingAvatar}
+          alt="Speaking avatar"
+          style={speakingAvatarStyle}
+        />
+      ) : (
+        <zoe-mascot
+          emotion={emotionId}
+          autoplay
+          loop
+          speed={speed}
+          style={{ width: "100%", height: "100%" }}
+        />
+      )}
     </div>
   );
 }

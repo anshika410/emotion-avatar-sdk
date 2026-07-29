@@ -28,6 +28,77 @@ import { surpriseNoticeEmotion } from "./surprise-notice.js";
 
 export const DEFAULT_EMOTION_ID = listeningEmotion.id;
 
+const mascotFamilies = {
+  love: {
+    gentle: loveWarmEmotion.id,
+    strong: loveHeartfeltEmotion.id,
+  },
+  joy: {
+    gentle: happyWarmEmotion.id,
+    strong: happyCelebrateEmotion.id,
+  },
+  surprise: {
+    gentle: surpriseNoticeEmotion.id,
+    strong: surpriseAstonishedEmotion.id,
+  },
+  anger: {
+    gentle: angerAcknowledgeEmotion.id,
+    strong: angerGroundingEmotion.id,
+  },
+  disgust: {
+    gentle: disgustRecognizeEmotion.id,
+    strong: disgustComposeEmotion.id,
+  },
+  sadness: {
+    gentle: sadnessConcernEmotion.id,
+    strong: sadnessComfortEmotion.id,
+  },
+  fear: {
+    gentle: fearReassureEmotion.id,
+    strong: fearSteadyEmotion.id,
+  },
+  neutral: {
+    gentle: neutralPresentEmotion.id,
+    strong: neutralFocusedEmotion.id,
+  },
+};
+
+const emotionAliases = {
+  happiness: { family: "joy", intensity: "strong" },
+  joy: { family: "joy", intensity: "strong" },
+  amusement: { family: "joy", intensity: "strong" },
+  excitement: { family: "joy", intensity: "strong" },
+  approval: { family: "joy", intensity: "gentle" },
+  pride: { family: "joy", intensity: "strong" },
+  optimism: { family: "joy", intensity: "gentle" },
+  curiosity: { family: "joy", intensity: "gentle" },
+  relief: { family: "joy", intensity: "gentle" },
+  love: { family: "love", intensity: "strong" },
+  caring: { family: "love", intensity: "gentle" },
+  admiration: { family: "love", intensity: "gentle" },
+  desire: { family: "love", intensity: "strong" },
+  gratitude: { family: "love", intensity: "gentle" },
+  surprise: { family: "surprise", intensity: "strong" },
+  realization: { family: "surprise", intensity: "gentle" },
+  confusion: { family: "surprise", intensity: "gentle" },
+  anger: { family: "anger", intensity: "strong" },
+  annoyance: { family: "anger", intensity: "gentle" },
+  disgust: { family: "disgust", intensity: "strong" },
+  disapproval: { family: "disgust", intensity: "gentle" },
+  sadness: { family: "sadness", intensity: "strong" },
+  grief: { family: "sadness", intensity: "strong" },
+  disappointment: { family: "sadness", intensity: "gentle" },
+  remorse: { family: "sadness", intensity: "gentle" },
+  embarrassment: { family: "sadness", intensity: "gentle" },
+  shame: { family: "sadness", intensity: "gentle" },
+  guilt: { family: "sadness", intensity: "gentle" },
+  fear: { family: "fear", intensity: "strong" },
+  nervousness: { family: "fear", intensity: "gentle" },
+  neutral: { family: "neutral", intensity: "gentle" },
+  sarcasm: { family: "neutral", intensity: "gentle" },
+  listening: { family: "neutral", intensity: "gentle" },
+};
+
 export const emotionList = [
   listeningEmotion,
   sadnessConcernEmotion,
@@ -65,66 +136,22 @@ export const emotionDefinitions = new Map(
   ]),
 );
 
-const reactionIds = {
-  sadness: {
-    gentle: sadnessConcernEmotion.id,
-    strong: sadnessComfortEmotion.id,
-  },
-  anger: {
-    gentle: angerAcknowledgeEmotion.id,
-    strong: angerGroundingEmotion.id,
-  },
-  love: {
-    gentle: loveWarmEmotion.id,
-    strong: loveHeartfeltEmotion.id,
-  },
-  happiness: {
-    gentle: happyWarmEmotion.id,
-    strong: happyCelebrateEmotion.id,
-  },
-  surprise: {
-    gentle: surpriseNoticeEmotion.id,
-    strong: surpriseAstonishedEmotion.id,
-  },
-  fear: {
-    gentle: fearReassureEmotion.id,
-    strong: fearSteadyEmotion.id,
-  },
-  disgust: {
-    gentle: disgustRecognizeEmotion.id,
-    strong: disgustComposeEmotion.id,
-  },
-  shame: {
-    gentle: shameAcceptanceEmotion.id,
-    strong: shameSupportEmotion.id,
-  },
-  guilt: {
-    gentle: guiltUnderstandEmotion.id,
-    strong: guiltRepairEmotion.id,
-  },
-  confusion: {
-    gentle: confusionCuriousEmotion.id,
-    strong: confusionClarifyEmotion.id,
-  },
-  desire: {
-    gentle: desireHopefulEmotion.id,
-    strong: desireEncourageEmotion.id,
-  },
-  sarcasm: {
-    gentle: sarcasmNoticeEmotion.id,
-    strong: sarcasmKnowingEmotion.id,
-  },
-  neutral: {
-    gentle: neutralPresentEmotion.id,
-    strong: neutralFocusedEmotion.id,
-  },
-};
-
 export function getEmotionDefinition(requestedId) {
   return emotionDefinitions.get(requestedId) ?? emotionDefinitions.get(DEFAULT_EMOTION_ID);
 }
 
-export function getReactionId(family, intensity = "gentle") {
+export function getReactionId(emotion, intensity = "gentle") {
+  const requestedEmotion = String(emotion ?? "").toLowerCase();
   const normalizedIntensity = intensity === "strong" ? "strong" : "gentle";
-  return reactionIds[family]?.[normalizedIntensity] ?? DEFAULT_EMOTION_ID;
+
+  if (emotionDefinitions.has(requestedEmotion)) {
+    return requestedEmotion;
+  }
+
+  const alias = emotionAliases[requestedEmotion];
+  if (alias) {
+    return mascotFamilies[alias.family]?.[alias.intensity] ?? DEFAULT_EMOTION_ID;
+  }
+
+  return mascotFamilies[requestedEmotion]?.[normalizedIntensity] ?? DEFAULT_EMOTION_ID;
 }

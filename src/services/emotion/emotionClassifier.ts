@@ -18,7 +18,6 @@ const MODEL_PATH = "navgurukul-ai/realtime-avatar-animation";
 export interface EmotionClassification {
   topEmotion: EmotionLabel;
   specificEmotionId: string;
-  intensity: "gentle" | "strong";
   confidence: number;
   scores: Record<EmotionLabel, number>;
   inferenceMs: number;
@@ -70,20 +69,6 @@ export function isEmotionClassifierReady(): boolean {
   return isLoaded;
 }
 
-/**
- * Determines intensity ("gentle" vs "strong") based on text features & model score confidence.
- */
-export function determineIntensity(text: string, confidenceScore: number): "gentle" | "strong" {
-  const isHighConfidence = confidenceScore >= 0.65;
-  const hasExclamation = text.includes("!");
-  const hasAllCapsWord = /\b[A-Z]{2,}\b/.test(text);
-
-  if (isHighConfidence || hasExclamation || hasAllCapsWord) {
-    return "strong";
-  }
-  return "gentle";
-}
-
 export async function classifyEmotion(
   text: string,
 ): Promise<EmotionClassification | null> {
@@ -117,13 +102,11 @@ export async function classifyEmotion(
       }
     }
 
-    const intensity = determineIntensity(text, maxScore);
-    const specificEmotionId = getReactionId(topEmotion, intensity);
+    const specificEmotionId = getReactionId(topEmotion);
 
     return {
       topEmotion,
       specificEmotionId,
-      intensity,
       confidence: maxScore,
       scores: scores as Record<EmotionLabel, number>,
       inferenceMs,

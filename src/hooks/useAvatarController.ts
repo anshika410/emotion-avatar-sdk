@@ -4,24 +4,25 @@ import { extractTextSignalsWithML } from "../services/emotion/textSignals";
 import {
   warmUpEmotionClassifier,
   disposeEmotionClassifier,
-  determineIntensity,
 } from "../services/emotion/emotionClassifier";
 import { getReactionId } from "../components/zoe-mascot/emotions/index.js";
 
 export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
   [EmotionState.LISTEN]: "listening",
-  [EmotionState.SPEAK_NEUTRAL]: "neutral-focused",
-  [EmotionState.ENCOURAGE]: "desire-encourage",
-  [EmotionState.THINK]: "neutral-present",
-  [EmotionState.CAUTION]: "anger-acknowledge",
-  [EmotionState.CELEBRATE]: "happy-celebrate",
-  [EmotionState.HAPPY]: "happy-warm",
-  [EmotionState.SAD]: "sadness-concern",
-  [EmotionState.ANGRY]: "disgust-recognize",
-  [EmotionState.SURPRISED]: "surprise-notice",
-  [EmotionState.SHOCK]: "fear-reassure",
-  [EmotionState.CONFUSE]: "confusion-curious",
+  [EmotionState.SPEAK_NEUTRAL]: "neutral",
+  [EmotionState.ENCOURAGE]: "desire",
+  [EmotionState.THINK]: "neutral",
+  [EmotionState.CAUTION]: "anger",
+  [EmotionState.CELEBRATE]: "joy",
+  [EmotionState.HAPPY]: "joy",
+  [EmotionState.SAD]: "sadness",
+  [EmotionState.ANGRY]: "anger",
+  [EmotionState.SURPRISED]: "surprise",
+  [EmotionState.SHOCK]: "fear",
+  [EmotionState.CONFUSE]: "confusion",
 };
+
+const SPEAKING_AVATAR_ID = "speaking-edited.webp";
 
 export interface UseAvatarControllerProps {
   isSpeaking?: boolean;
@@ -62,11 +63,11 @@ export function useAvatarController({
   // Set emotion manually (supports EmotionState enum or specific emotion string ID)
   const setEmotion = useCallback((emotion: EmotionState | string) => {
     if (typeof emotion === "string" && emotion in EMOTION_STATE_MAP) {
-      setEmotionId(EMOTION_STATE_MAP[emotion as EmotionState]);
+      setEmotionId(getReactionId(EMOTION_STATE_MAP[emotion as EmotionState]));
     } else if (typeof emotion === "string") {
-      setEmotionId(emotion);
+      setEmotionId(getReactionId(emotion));
     } else {
-      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "listening");
+      setEmotionId(getReactionId(EMOTION_STATE_MAP[emotion] ?? "listening"));
     }
   }, []);
 
@@ -79,13 +80,12 @@ export function useAvatarController({
         const signals = await extractTextSignalsWithML(text);
 
         if (signals.modelEmotion) {
-          const intensity = determineIntensity(text, signals.modelConfidence);
-          return getReactionId(signals.modelEmotion, intensity);
+          return getReactionId(signals.modelEmotion);
         }
 
         // Fallback to sentiment valence
-        if (signals.sentimentValence > 0.3) return "desire-encourage";
-        if (signals.sentimentValence < -0.3) return "anger-acknowledge";
+        if (signals.sentimentValence > 0.3) return getReactionId("joy");
+        if (signals.sentimentValence < -0.3) return getReactionId("anger");
 
         return "listening";
       } catch (error) {
@@ -99,7 +99,7 @@ export function useAvatarController({
   // Update emotion based on speaking/listening state
   useEffect(() => {
     if (isSpeaking && !isListening) {
-      setEmotionId("neutral-focused");
+      setEmotionId(SPEAKING_AVATAR_ID);
     } else if (!isSpeaking && isListening) {
       setEmotionId("listening");
     } else {

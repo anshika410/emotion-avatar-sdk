@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { EmotionState } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
 import { useAvatarController } from "../hooks/useAvatarController";
-import { resetEmotionProcessing } from "../services/emotion/textSignals";
 
 export interface AnimatedAvatarProps {
   aiMessage?: string;
@@ -40,8 +39,7 @@ export function AnimatedAvatar({
     isListening,
   });
 
-  const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastInterimText = useRef("");
 
   useEffect(() => {
     onInitialized?.(isInitialized);
@@ -56,30 +54,17 @@ export function AnimatedAvatar({
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
 
-    const wordCount = userMessageInterim.trim().split(/\s+/).length;
-    const charCount = userMessageInterim.length;
+    const trimmedInterim = userMessageInterim.trim();
+    const wordCount = trimmedInterim.split(/\s+/).length;
+    const charCount = trimmedInterim.length;
+    const hasMeaningfulLength = wordCount > 3 || charCount > 20;
 
-    if (wordCount > 3 || charCount > 20) {
-      analyzeEmotion(userMessageInterim).then((detected: string) =>
-        setEmotion(detected)
-      );
+    if (hasMeaningfulLength && trimmedInterim !== lastInterimText.current) {
+      lastInterimText.current = trimmedInterim;
+      analyzeEmotion(trimmedInterim).then((detected: string) => {
+        setEmotion(detected);
+      });
     }
-
-    // Restart inactivity timer
-    if (interimResetTimeout.current) {
-      clearTimeout(interimResetTimeout.current);
-    }
-
-    interimResetTimeout.current = setTimeout(() => {
-      resetEmotionProcessing();
-    }, 5000);
-
-    return () => {
-      if (interimResetTimeout.current) {
-        clearTimeout(interimResetTimeout.current);
-      }
-    };
-
   }, [userMessageInterim, isInitialized, analyzeEmotion, setEmotion]);
 
 
@@ -88,28 +73,10 @@ export function AnimatedAvatar({
 
     const processFinalEmotion = async () => {
       const detected = await analyzeEmotion(userMessageFinal);
-
-      // Display the detected emotion
       setEmotion(detected);
-
-      // Clear any previous final reset timeout
-      if (finalResetTimeout.current) {
-        clearTimeout(finalResetTimeout.current);
-      }
-
-      // Delay the reset by 1 second so the user can see the final emotion
-      finalResetTimeout.current = setTimeout(() => {
-        resetEmotionProcessing();
-      }, 1000);
     };
 
     processFinalEmotion();
-
-    return () => {
-      if (finalResetTimeout.current) {
-        clearTimeout(finalResetTimeout.current);
-      }
-    };
   }, [userMessageFinal, isInitialized, analyzeEmotion, setEmotion]);
 
   // Loading state
