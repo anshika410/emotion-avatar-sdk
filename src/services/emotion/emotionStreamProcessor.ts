@@ -58,7 +58,7 @@ import type { EmotionLabel } from "../../types/emotion";
 /** Flip on only for local debugging — these log full score distributions
  * (JSON.stringify of up to 28 labels) on every call, which is itself a
  * measurable source of lag if left on in a live stream. */
-const DEBUG_LOGGING = false;
+const DEBUG_LOGGING = true;
 
 /**
  * predictTopK slices its sorted result to this many entries. We want the
@@ -400,7 +400,6 @@ let contrastShiftPendingForSegment = false;
 /** Last tail-candidate text returned by `decideChunksToFlush` for the
  * current segment (regardless of whether it ended up gated/sent) — pure
  * dedup, so we don't return the exact same candidate twice in a row. */
-let lastReturnedSegmentText = "";
 /** Last tail text actually SENT to the model for the current segment.
  * processAndClassify diffs new candidates against this to measure how
  * much is genuinely new since the last real send. */
@@ -439,7 +438,6 @@ interface ChunkToScore {
 
 function startNewSegment(newStartIndex: number): void {
   activeSegmentStartIndex = newStartIndex;
-  lastReturnedSegmentText = "";
   lastSentSegmentText = "";
   contrastShiftPendingForSegment = true;
 }
@@ -469,7 +467,6 @@ function decideChunksToFlush(transcript: string): ChunkToScore[] {
   if (activeSegmentStartIndex > transcript.length) {
     activeSegmentStartIndex = 0;
     contrastShiftPendingForSegment = false;
-    lastReturnedSegmentText = "";
     lastSentSegmentText = "";
   }
 
@@ -498,7 +495,7 @@ function decideChunksToFlush(transcript: string): ChunkToScore[] {
   // No (more) contrast markers in the active segment — return it as a tail
   // candidate if it's new. Sizing/gating happens in processAndClassify.
   const trimmedActive = activeSegment.trim();
-  if (!trimmedActive || trimmedActive === lastReturnedSegmentText) {
+  if (!trimmedActive) {
     return chunks;
   }
 
@@ -507,8 +504,6 @@ function decideChunksToFlush(transcript: string): ChunkToScore[] {
     postContrastShift: contrastShiftPendingForSegment,
     segmentComplete: false,
   });
-  lastReturnedSegmentText = trimmedActive;
-
   return chunks;
 }
 
@@ -809,7 +804,6 @@ export function resetEmotionProcessing(): void {
   lastTranscript = "";
   activeSegmentStartIndex = 0;
   contrastShiftPendingForSegment = false;
-  lastReturnedSegmentText = "";
   lastSentSegmentText = "";
   chunkScoreCache.clear();
 }
