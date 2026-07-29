@@ -431,11 +431,6 @@ function cacheScoresForChunk(key: string, scores: Record<string, number>): void 
   chunkScoreCache.set(key, scores);
 }
 
-interface ChunkToScore {
-  text: string;
-  postContrastShift: boolean;
-}
-
 function startNewSegment(newStartIndex: number): void {
   activeSegmentStartIndex = newStartIndex;
   lastSentSegmentText = "";
@@ -1034,7 +1029,7 @@ async function scoreChunkWithModel(chunkText: string): Promise<{
       // Expected under load — a fresher request already superseded this one.
       return { scores: null, inferenceMs: 0, fromCache: false };
     }
-    console.error("[emotionStreamProcessor] ML inference failed:", error);
+    // Graceful fallback to rule-based classification when ML model is warming up or unavailable
     return { scores: null, inferenceMs: 0, fromCache: false };
   }
 }

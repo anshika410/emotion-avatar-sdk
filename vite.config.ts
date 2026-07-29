@@ -2,12 +2,20 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import dts from "vite-plugin-dts";
 import { resolve } from "path";
-import { viteStaticCopy } from "vite-plugin-static-copy"; // add this
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 export default defineConfig({
   plugins: [
     react(),
     dts({ include: ["src/**/*"], outDir: "dist", rollupTypes: true }),
+    viteStaticCopy({
+      targets: [
+        {
+          src: "src/assets/*.webp",
+          dest: ".",
+        },
+      ],
+    }),
   ],
   build: {
     lib: {

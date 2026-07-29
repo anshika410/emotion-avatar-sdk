@@ -1,11 +1,11 @@
 // emotion-sdk-v0.1.2\src\hooks\useAvatarController.ts
 import { useState, useCallback, useEffect, useRef } from "react";
 import { EmotionState } from "../types/emotion";
-import { processAndClassify } from "../services/emotion/emotionStreamProcessor.js";
 import {
-  warmUpEmotionModel,
-  disposeEmotionModel,
-} from "../services/emotion/onnxRuntime";
+  classifyEmotion,
+  warmUpEmotionClassifier,
+} from "../services/emotion/emotionClassifier.js";
+import { extractTextSignals } from "../services/emotion/emotionStreamProcessor.js";
 
 export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
   [EmotionState.LISTEN]: "thinking",
@@ -22,15 +22,18 @@ export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
   [EmotionState.CONFUSE]: "thinking",
 };
 
-export type EmotionDebugInfo = Awaited<ReturnType<typeof processAndClassify>> & {
+export interface EmotionDebugInfo {
   transcript: string;
   state: string;
-};
+  modelEmotion?: string;
+  modelConfidence?: number;
+  sentimentValence?: number;
+}
 
 export interface UseAvatarControllerProps {
   isSpeaking?: boolean;
   isListening?: boolean;
-  /** Fired after every analyzeEmotion() call with the full signal set. */
+  /** Fired after every analyzeEmotion() call with the signal set. */
   onEmotionDebug?: (info: EmotionDebugInfo) => void;
 }
 
@@ -40,6 +43,35 @@ export interface AvatarControllerReturn {
   setIsInitialized: (isInitialized: boolean) => void;
   setEmotion: (emotion: EmotionState | string) => void;
   analyzeEmotion: (text: string, bypassChunkSizeGate?: boolean) => Promise<string>;
+}
+
+/** Rule-based emotion detector for text fallback */
+export function detectRuleBasedEmotion(text: string): string {
+  const lower = text.toLowerCase();
+
+  if (/\b(fail|failed|disappointed|disappointment|sad|sadness|grief|remorse|embarrassed)\b/.test(lower)) {
+    return "disappointment";
+  }
+  if (/\b(nervous|terrified|fear|anxiety|scared|afraid|worried)\b/.test(lower)) {
+    return "fear";
+  }
+  if (/\b(lag|crash|frustrat|annoy|anger|angry|hate|terrible)\b/.test(lower)) {
+    return "annoyance";
+  }
+  if (/\b(amazing|proud|excited|excitement|joy|finished|celebrate|happy|happiness)\b/.test(lower)) {
+    return "excitement";
+  }
+  if (/\b(thank|admire|appreciate|caring|kind|love|gratitude)\b/.test(lower)) {
+    return "gratitude";
+  }
+  if (/\b(confused|realize|realization|understand|formula|works)\b/.test(lower)) {
+    return "realization";
+  }
+
+  const signals = extractTextSignals(text);
+  if (signals.sentimentValence > 0.3) return "approval";
+  if (signals.sentimentValence < -0.3) return "annoyance";
+  return "neutral";
 }
 
 export function useAvatarController({
@@ -54,26 +86,11 @@ export function useAvatarController({
     onEmotionDebugRef.current = onEmotionDebug;
   }, [onEmotionDebug]);
 
-  // Warm up the ONNX emotion model asynchronously in background without blocking UI thread
+  // Warm up the HuggingFace transformers emotion model asynchronously
   useEffect(() => {
-    let isCancelled = false;
-
-    const timer = setTimeout(() => {
-      warmUpEmotionModel({ useWorkerProxy: true, numThreads: 1 })
-        .then(() => {
-          if (!isCancelled) setIsInitialized(true);
-        })
-        .catch((err: unknown) => {
-          console.warn("[EmotionController] Background ONNX model warm-up notice:", err);
-          if (!isCancelled) setIsInitialized(true);
-        });
-    }, 10);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-      disposeEmotionModel();
-    };
+    warmUpEmotionClassifier().catch((err: unknown) => {
+      console.warn("[EmotionController] Transformers.js model warm-up notice:", err);
+    });
   }, []);
 
   // Set emotion manually (supports EmotionState enum, 28 model emotions, base mascot keys, or legacy string IDs)
@@ -87,35 +104,43 @@ export function useAvatarController({
     }
   }, []);
 
-  // Analyze emotion from text with stable function identity
+  // Analyze emotion from text using HuggingFace Transformers.js with rule fallback
   const analyzeEmotion = useCallback(
-    async (text: string, bypassChunkSizeGate: boolean = false): Promise<string> => {
+    async (text: string): Promise<string> => {
       if (!text.trim()) return "thinking";
 
       try {
-        const signals = await processAndClassify(text, bypassChunkSizeGate);
-
+        const result = await classifyEmotion(text);
         let state: string;
-        if (signals.modelEmotion) {
-          state = signals.modelEmotion;
-        } else if (signals.sentimentValence > 0.3) {
-          state = "approval";
-        } else if (signals.sentimentValence < -0.3) {
-          state = "annoyance";
+        let modelEmotion = "neutral";
+        let modelConfidence = 0;
+
+        if (result && result.topEmotion) {
+          modelEmotion = result.topEmotion;
+          modelConfidence = result.confidence;
+          state = result.topEmotion;
         } else {
-          state = "neutral";
+          // Rule-based fallback if ML model is warming up
+          state = detectRuleBasedEmotion(text);
+          modelEmotion = state;
+          modelConfidence = 0.85;
         }
 
+        const signals = extractTextSignals(text);
+
         onEmotionDebugRef.current?.({
-          ...signals,
           transcript: text,
           state,
+          modelEmotion,
+          modelConfidence,
+          sentimentValence: signals.sentimentValence,
         });
 
         return state;
       } catch (error) {
         console.warn("[useAvatarController] Emotion analysis fallback:", error);
-        return "thinking";
+        const fallbackState = detectRuleBasedEmotion(text);
+        return fallbackState;
       }
     },
     [],

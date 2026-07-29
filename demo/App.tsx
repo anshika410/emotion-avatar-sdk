@@ -56,11 +56,11 @@ const PRESET_CONVERSATIONS = [
 export function App() {
   const [activeTab, setActiveTab] = useState<"explorer" | "liveChat">("liveChat");
 
-  // State for Explorer tab
+  // State for Explorer tab (strictly defaults to false)
   const [selectedEmotion, setSelectedEmotion] = useState<string>("joy");
   const [isSpeakingExplorer, setIsSpeakingExplorer] = useState<boolean>(false);
 
-  // State for Live Chat Simulator tab
+  // State for Live Chat Simulator tab (strictly defaults to false)
   const [userInterim, setUserInterim] = useState<string>("");
   const [userFinal, setUserFinal] = useState<string>("");
   const [aiMessage, setAiMessage] = useState<string>("");
@@ -76,11 +76,7 @@ export function App() {
   const handleSimulatePreset = (preset: (typeof PRESET_CONVERSATIONS)[0]) => {
     setUserFinal(preset.text);
     setAiMessage(preset.aiResponse);
-    setIsSpeakingChat(true);
-
-    setTimeout(() => {
-      setIsSpeakingChat(false);
-    }, 4000);
+    // Note: isSpeakingChat remains unchanged (off unless manually toggled ON by user)
   };
 
   const handleUserSubmit = (e: React.FormEvent) => {
@@ -241,7 +237,7 @@ export function App() {
                 <div>
                   <span style={{ color: "#94a3b8" }}>Avatar Mode: </span>
                   <strong style={{ color: isSpeakingChat ? "#10b981" : "#cbd5e1" }}>
-                    {isSpeakingChat ? "Speaking Asset" : "Idle Asset"}
+                    {isSpeakingChat ? "Speaking Asset (ON)" : "Idle Asset (OFF)"}
                   </strong>
                 </div>
               </div>
@@ -263,7 +259,7 @@ export function App() {
                 Simulate Live Chat Scenarios
               </h3>
               <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "16px" }}>
-                Click any preset to simulate user speech transcript and AI voice response
+                Click any preset to simulate user speech transcript. Speaking state remains OFF until manually toggled ON.
               </p>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -360,10 +356,10 @@ export function App() {
                     fontWeight: "600",
                   }}
                 >
-                  {isSpeakingChat ? "🔊 AI Speaking ON" : "🔈 AI Speaking OFF"}
+                  {isSpeakingChat ? "🔊 Speaking State: ON" : "🔈 Speaking State: OFF"}
                 </button>
                 <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-                  Toggle speaking state to test speaking WebP assets live
+                  (Avatar renders Idle asset when OFF, Speaking asset when ON)
                 </span>
               </div>
             </div>
@@ -379,7 +375,7 @@ export function App() {
                 }}
               >
                 <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#f8fafc", marginBottom: "12px" }}>
-                  ONNX Model Real-Time Diagnostics
+                  Model Real-Time Diagnostics
                 </h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "13px" }}>
                   <div style={{ background: "#0f172a", padding: "12px", borderRadius: "8px" }}>
@@ -388,8 +384,8 @@ export function App() {
                   </div>
                   <div style={{ background: "#0f172a", padding: "12px", borderRadius: "8px" }}>
                     <div style={{ color: "#94a3b8", marginBottom: "4px" }}>Sentiment Valence</div>
-                    <div style={{ color: debugLog.sentimentValence > 0 ? "#10b981" : "#ef4444", fontWeight: "700" }}>
-                      {debugLog.sentimentValence.toFixed(2)}
+                    <div style={{ color: (debugLog.sentimentValence ?? 0) > 0 ? "#10b981" : "#ef4444", fontWeight: "700" }}>
+                      {(debugLog.sentimentValence ?? 0).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -441,7 +437,7 @@ export function App() {
                   transition: "all 0.2s ease",
                 }}
               >
-                {isSpeakingExplorer ? "🔊 Speaking ON" : "🔇 Idle Mode"}
+                {isSpeakingExplorer ? "🔊 Speaking State: ON" : "🔇 Speaking State: OFF"}
               </button>
             </div>
 
@@ -486,7 +482,7 @@ export function App() {
                 <div>
                   <span style={{ color: "#94a3b8" }}>State: </span>
                   <strong style={{ color: isSpeakingExplorer ? "#10b981" : "#cbd5e1" }}>
-                    {isSpeakingExplorer ? "Speaking Asset" : "Idle Mascot"}
+                    {isSpeakingExplorer ? "Speaking Asset (ON)" : "Idle Mascot (OFF)"}
                   </strong>
                 </div>
               </div>

@@ -39,6 +39,11 @@
 import { AutoTokenizer, type PreTrainedTokenizer } from "@huggingface/transformers";
 import * as ort from "onnxruntime-web";
 
+// Ensure onnxruntime-web fetches valid WASM binaries from CDN instead of failing on local HTML 404
+if (typeof window !== "undefined" && ort && ort.env && ort.env.wasm) {
+  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+}
+
 export interface EmotionPrediction {
   label: string;
   probability: number;

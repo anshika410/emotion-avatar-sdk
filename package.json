@@ -18,6 +18,7 @@
     "README.md",
     "LICENSE"
   ],
+  "assets": "dist/src/assets",
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
