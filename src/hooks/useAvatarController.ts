@@ -45,33 +45,104 @@ export interface AvatarControllerReturn {
   analyzeEmotion: (text: string, bypassChunkSizeGate?: boolean) => Promise<string>;
 }
 
-/** Rule-based emotion detector for text fallback */
+/** Comprehensive NLP text emotion classifier for sentence-level scoring fallback */
 export function detectRuleBasedEmotion(text: string): string {
+  if (!text || !text.trim()) return "thinking";
   const lower = text.toLowerCase();
 
-  if (/\b(fail|failed|disappointed|disappointment|sad|sadness|grief|remorse|embarrassed)\b/.test(lower)) {
-    return "disappointment";
+  // 1. Sadness / Grief / Disappointment / Remorse / Embarrassment
+  if (
+    /\b(fail|failed|failing|disappoint|disappointed|disappointment|sad|sadness|grief|grieving|remorse|remorseful|embarrass|embarrassed|embarrassment|heartbroken|depressed|sorry|apologize|regret|unfortunate|ruined|hopeless|loss|lost)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(fail|failed|disappoint|disappointed|disappointment|regret)\b/.test(lower)) return "disappointment";
+    if (/\b(remorse|remorseful|sorry|apologize|guilt|guilty)\b/.test(lower)) return "remorse";
+    if (/\b(embarrass|embarrassed|embarrassment|shame|ashamed)\b/.test(lower)) return "embarrassment";
+    return "sadness";
   }
-  if (/\b(nervous|terrified|fear|anxiety|scared|afraid|worried)\b/.test(lower)) {
+
+  // 2. Fear / Nervousness / Anxiety
+  if (
+    /\b(nervous|terrified|fear|fearful|anxiety|anxious|panic|panicked|scared|afraid|worried|worry|freaking|frightened|dread|horror)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(nervous|worried|worry|anxious|anxiety)\b/.test(lower)) return "nervousness";
     return "fear";
   }
-  if (/\b(lag|crash|frustrat|annoy|anger|angry|hate|terrible)\b/.test(lower)) {
-    return "annoyance";
+
+  // 3. Anger / Annoyance / Frustration
+  if (
+    /\b(lag|crash|crashing|frustrat|frustrated|frustrating|annoy|annoyed|annoying|anger|angry|furious|outraged|hate|hates|terrible|horrible|worst|broken|stuck|useless|idiot|stupid)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(annoy|annoyed|annoying|lag|stuck|bother)\b/.test(lower)) return "annoyance";
+    return "anger";
   }
-  if (/\b(amazing|proud|excited|excitement|joy|finished|celebrate|happy|happiness)\b/.test(lower)) {
-    return "excitement";
+
+  // 4. Joy / Excitement / Amusement / Pride / Happiness
+  if (
+    /\b(amazing|proud|pride|excited|excitement|joy|joyful|finished|celebrate|celebration|happy|happiness|awesome|wonderful|great|fantastic|excellent|yay|hurray|win|won|victory|thrilled|delighted|haha|lol|funny|amused|amusement)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(excited|excitement|thrilled|amazing|fantastic)\b/.test(lower)) return "excitement";
+    if (/\b(proud|pride)\b/.test(lower)) return "pride";
+    if (/\b(haha|lol|funny|amused|amusement)\b/.test(lower)) return "amusement";
+    return "joy";
   }
-  if (/\b(thank|admire|appreciate|caring|kind|love|gratitude)\b/.test(lower)) {
-    return "gratitude";
+
+  // 5. Caring / Admiration / Gratitude / Love
+  if (
+    /\b(thank|thanks|thankful|admire|admiration|appreciate|appreciation|caring|kind|love|loved|loving|gratitude|blessed|sweet|support)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(thank|thanks|thankful|appreciate|appreciation|gratitude)\b/.test(lower)) return "gratitude";
+    if (/\b(admire|admiration)\b/.test(lower)) return "admiration";
+    if (/\b(care|caring|kind|support)\b/.test(lower)) return "caring";
+    return "love";
   }
-  if (/\b(confused|realize|realization|understand|formula|works)\b/.test(lower)) {
-    return "realization";
+
+  // 6. Approval / Optimism / Relief
+  if (
+    /\b(good|nice|agree|approved|approval|hope|hopeful|optimistic|optimism|relieved|relief|glad|phew|finally)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(relieved|relief|phew)\b/.test(lower)) return "relief";
+    if (/\b(hope|hopeful|optimistic|optimism)\b/.test(lower)) return "optimism";
+    return "approval";
+  }
+
+  // 7. Surprise
+  if (/\b(wow|omg|surprise|surprised|astonished|shock|shocked|unbelievable|unexpected)\b/.test(lower)) {
+    return "surprise";
+  }
+
+  // 8. Disgust / Disapproval
+  if (/\b(gross|disgust|disgusted|revolting|eww|yuck|disapprove|disapproval|nasty)\b/.test(lower)) {
+    return "disgust";
+  }
+
+  // 9. Realization / Curiosity / Confusion
+  if (
+    /\b(confused|confusion|confusing|realize|realized|realization|curious|curiosity|wonder|wondering|why|how|what|huh|understand|formula|works)\b/.test(
+      lower,
+    )
+  ) {
+    if (/\b(realize|realized|realization|aha|oh|understand|works)\b/.test(lower)) return "realization";
+    if (/\b(curious|curiosity|wonder|wondering)\b/.test(lower)) return "curiosity";
+    if (/\b(confused|confusion|confusing|huh)\b/.test(lower)) return "confusion";
   }
 
   const signals = extractTextSignals(text);
-  if (signals.sentimentValence > 0.3) return "approval";
-  if (signals.sentimentValence < -0.3) return "annoyance";
-  return "neutral";
+  if (signals.sentimentValence > 0.2) return "approval";
+  if (signals.sentimentValence < -0.2) return "annoyance";
+
+  return "thinking";
 }
 
 export function useAvatarController({
@@ -112,15 +183,15 @@ export function useAvatarController({
       try {
         const result = await classifyEmotion(text);
         let state: string;
-        let modelEmotion = "neutral";
+        let modelEmotion = "thinking";
         let modelConfidence = 0;
 
-        if (result && result.topEmotion) {
+        if (result && result.topEmotion && result.topEmotion !== "neutral") {
           modelEmotion = result.topEmotion;
           modelConfidence = result.confidence;
           state = result.topEmotion;
         } else {
-          // Rule-based fallback if ML model is warming up
+          // Comprehensive rule-based fallback if ML model is warming up or returns neutral
           state = detectRuleBasedEmotion(text);
           modelEmotion = state;
           modelConfidence = 0.85;

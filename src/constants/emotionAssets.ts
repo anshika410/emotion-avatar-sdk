@@ -1,5 +1,20 @@
-/** Base path for mascot assets - defaults to public/assets folder in consumer apps */
-export const ASSET_BASE_PATH = "/assets";
+import loveStrongImg from "../assets/Love-Strong.webp";
+import gentleLoveImg from "../assets/gentle-love.webp";
+import happyStrongImg from "../assets/happy_strong.webp";
+import happyGentleImg from "../assets/happy_gentle.webp";
+import thinkingImg from "../assets/thinking.webp";
+import surpriseImg from "../assets/surprise.webp";
+import angerImg from "../assets/anger.webp";
+import disgustImg from "../assets/disgust.webp";
+import fearImg from "../assets/fear.webp";
+import sadStrongImg from "../assets/sad-Strong.webp";
+import sadGentleImg from "../assets/sad-gentle.webp";
+import celebrationImg from "../assets/celebration.webp";
+import shokedImg from "../assets/shoked.webp";
+
+import speakingHappyImg from "../assets/speaking_happy.webp";
+import speakingNeutralImg from "../assets/speaking_neutral.webp";
+import sadSpeakingGentleImg from "../assets/sad-speaking_gentle.webp";
 
 /** Source of Truth mapping: Base mascot asset names */
 export type BaseMascotKey =
@@ -101,29 +116,29 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
 
 /** WebP image URLs for base mascots */
 export const BASE_MASCOT_ASSETS: Record<BaseMascotKey | string, string> = {
-  "Love-Strong": `${ASSET_BASE_PATH}/Love-Strong.webp`,
-  "gentle-love": `${ASSET_BASE_PATH}/gentle-love.webp`,
-  happy_strong: `${ASSET_BASE_PATH}/happy_strong.webp`,
-  happy_gentle: `${ASSET_BASE_PATH}/happy_gentle.webp`,
-  thinking: `${ASSET_BASE_PATH}/thinking.webp`,
-  surprise: `${ASSET_BASE_PATH}/surprise.webp`,
-  anger: `${ASSET_BASE_PATH}/anger.webp`,
-  disgust: `${ASSET_BASE_PATH}/disgust.webp`,
-  fear: `${ASSET_BASE_PATH}/fear.webp`,
-  "sad-Strong": `${ASSET_BASE_PATH}/sad-Strong.webp`,
+  "Love-Strong": loveStrongImg,
+  "gentle-love": gentleLoveImg,
+  happy_strong: happyStrongImg,
+  happy_gentle: happyGentleImg,
+  thinking: thinkingImg,
+  surprise: surpriseImg,
+  anger: angerImg,
+  disgust: disgustImg,
+  fear: fearImg,
+  "sad-Strong": sadStrongImg,
   // Additional assets for specific legacy/extended lookups
-  "sad-gentle": `${ASSET_BASE_PATH}/sad-gentle.webp`,
-  celebration: `${ASSET_BASE_PATH}/celebration.webp`,
-  shoked: `${ASSET_BASE_PATH}/shoked.webp`,
+  "sad-gentle": sadGentleImg,
+  celebration: celebrationImg,
+  shoked: shokedImg,
 };
 
 /** Dedicated speaking assets */
 export const SPEAKING_ASSETS = {
-  speaking_happy: `${ASSET_BASE_PATH}/speaking_happy.webp`,
-  speaking_neutral: `${ASSET_BASE_PATH}/speaking_neutral.webp`,
-  "sad-speaking_gentle": `${ASSET_BASE_PATH}/sad-speaking_gentle.webp`,
+  speaking_happy: speakingHappyImg,
+  speaking_neutral: speakingNeutralImg,
+  "sad-speaking_gentle": sadSpeakingGentleImg,
   // Fallback for strong sadness when dedicated strong speaking asset is not present
-  "sad-speaking_strong": `${ASSET_BASE_PATH}/sad-speaking_gentle.webp`,
+  "sad-speaking_strong": sadSpeakingGentleImg,
 };
 
 /** Maps each of the 28 model emotions to its designated speaking asset */
