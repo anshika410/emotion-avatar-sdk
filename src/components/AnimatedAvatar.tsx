@@ -1,8 +1,9 @@
+// emotion-sdk-v0.1.2\src\components\AnimatedAvatar.tsx
 import { useEffect, useRef } from "react";
 import { EmotionState } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
-import { useAvatarController } from "../hooks/useAvatarController";
-import { resetEmotionProcessing } from "../services/emotion/textSignals";
+import { useAvatarController, type EmotionDebugInfo } from "../hooks/useAvatarController";
+import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
 
 export interface AnimatedAvatarProps {
   aiMessage?: string;
@@ -11,6 +12,8 @@ export interface AnimatedAvatarProps {
   isSpeaking?: boolean;
   isListening?: boolean;
   onInitialized?: (isInitialized: boolean) => void;
+  onEmotionDebug?: (info: EmotionDebugInfo) => void;
+
   /** CSS class for the outer wrapper (layout container) */
   containerClassName?: string;
   /** CSS class for the avatar image (optional) */
@@ -26,6 +29,7 @@ export function AnimatedAvatar({
   isSpeaking = false,
   isListening = false,
   onInitialized,
+  onEmotionDebug,
   containerClassName,
   avatarClassName,
   style,
@@ -38,6 +42,7 @@ export function AnimatedAvatar({
   } = useAvatarController({
     isSpeaking,
     isListening,
+    onEmotionDebug,
   });
 
   const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,8 +65,9 @@ export function AnimatedAvatar({
     const charCount = userMessageInterim.length;
 
     if (wordCount > 3 || charCount > 20) {
-      analyzeEmotion(userMessageInterim).then((detected: string) =>
-        setEmotion(detected)
+      analyzeEmotion(userMessageInterim).then((detected: string) => {
+        setEmotion(detected);
+      }
       );
     }
 
@@ -87,7 +93,7 @@ export function AnimatedAvatar({
     if (!userMessageFinal || !isInitialized) return;
 
     const processFinalEmotion = async () => {
-      const detected = await analyzeEmotion(userMessageFinal);
+      const detected = await analyzeEmotion(userMessageFinal, true);
 
       // Display the detected emotion
       setEmotion(detected);

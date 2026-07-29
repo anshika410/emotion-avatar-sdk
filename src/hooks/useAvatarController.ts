@@ -1,11 +1,11 @@
+// emotion-sdk-v0.1.2\src\hooks\useAvatarController.ts
 import { useState, useCallback, useEffect } from "react";
 import { EmotionState } from "../types/emotion";
-import { extractTextSignalsWithML } from "../services/emotion/textSignals";
+import { processAndClassify } from "../services/emotion/emotionStreamProcessor.js";
 import {
-  warmUpEmotionClassifier,
-  disposeEmotionClassifier,
-  determineIntensity,
-} from "../services/emotion/emotionClassifier";
+  warmUpEmotionModel,
+  disposeEmotionModel,
+} from "../services/emotion/onnxRuntime";
 import { getReactionId } from "../components/zoe-mascot/emotions/index.js";
 
 export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
@@ -23,9 +23,56 @@ export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
   [EmotionState.CONFUSE]: "confusion-curious",
 };
 
+/** Intensity bucket used to pick a reaction variant from getReactionId. */
+export type EmotionIntensity = "low" | "medium" | "high";
+
+/**
+ * Local replacement for the old `determineIntensity` (previously imported
+ * from `emotionClassifier.ts`, which this hook no longer depends on —
+ * warm-up/dispose now come from `onnxRuntime.ts` instead).
+ *
+ * Derives intensity from the model's confidence, discounted by how
+ * uncertain the overall classification is (`signals.uncertaintyScore`, which
+ * already folds in confidence gap, entropy, and lexical conflict — see
+ * emotionStreamProcessor.ts). A high raw confidence paired with high
+ * uncertainty (e.g. conflicting cues in the same chunk) is intentionally
+ * treated as a weaker reaction, not a strong one.
+ *
+ * CAVEAT: the previous `determineIntensity(text, confidence)` also took the
+ * raw text and may have used cues this version doesn't (length, punctuation,
+ * ALL CAPS, etc.). If that nuance mattered for your reactions, port it over
+ * from emotionClassifier.ts before retiring that file — this is a
+ * best-effort replacement based only on the signals processAndClassify
+ * already produces.
+ */
+function determineIntensity(confidence: number, uncertaintyScore: number): EmotionIntensity {
+  const adjustedConfidence = confidence * (1 - uncertaintyScore);
+  if (adjustedConfidence >= 0.6) return "high";
+  if (adjustedConfidence >= 0.3) return "medium";
+  return "low";
+}
+
+/**
+ * Everything `processAndClassify` returns (modelEmotion, modelConfidence,
+ * emotionScores, complexity/uncertainty breakdowns, topEmotions,
+ * explanation, contrastShiftDetected, ...) plus the raw transcript that
+ * produced it and the final avatar reaction chosen from it.
+ *
+ * Typed via `Awaited<ReturnType<typeof processAndClassify>>` rather than a
+ * hand-written field list, so every field that pipeline returns is
+ * automatically forwarded to `onEmotionDebug` — nothing to keep in sync by
+ * hand if the pipeline's return shape changes later.
+ */
+export type EmotionDebugInfo = Awaited<ReturnType<typeof processAndClassify>> & {
+  transcript: string;
+  state: string;
+};
+
 export interface UseAvatarControllerProps {
   isSpeaking?: boolean;
   isListening?: boolean;
+  /** Fired after every analyzeEmotion() call with the full signal set. */
+  onEmotionDebug?: (info: EmotionDebugInfo) => void;
 }
 
 export interface AvatarControllerReturn {
@@ -33,29 +80,30 @@ export interface AvatarControllerReturn {
   emotionId: string;
   setIsInitialized: (isInitialized: boolean) => void;
   setEmotion: (emotion: EmotionState | string) => void;
-  analyzeEmotion: (text: string) => Promise<string>;
+  analyzeEmotion: (text: string, bypassChunkSizeGate?: boolean) => Promise<string>;
 }
 
 export function useAvatarController({
   isSpeaking = false,
   isListening = false,
+  onEmotionDebug,
 }: UseAvatarControllerProps = {}): AvatarControllerReturn {
   const [emotionId, setEmotionId] = useState<string>("listening");
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Warm up ML emotion classifier on mount
+  // Warm up the ONNX emotion model on mount
   useEffect(() => {
-    warmUpEmotionClassifier()
+    warmUpEmotionModel({ useWorkerProxy: false, numThreads: 1, })
       .then(() => setIsInitialized(true))
       .catch((err: unknown) => {
         console.warn(
-          "[EmotionController] ML classifier warm-up warning:",
+          "[EmotionController] ONNX model warm-up warning:",
           err,
         );
         setIsInitialized(true);
       });
     return () => {
-      disposeEmotionClassifier();
+      disposeEmotionModel();
     };
   }, []);
 
@@ -72,28 +120,45 @@ export function useAvatarController({
 
   // Analyze emotion from text
   const analyzeEmotion = useCallback(
-    async (text: string): Promise<string> => {
+    async (text: string, bypassChunkSizeGate: boolean = false): Promise<string> => {
       if (!text.trim()) return "listening";
 
       try {
-        const signals = await extractTextSignalsWithML(text);
+        const signals = await processAndClassify(text, bypassChunkSizeGate) ;
 
+        let state: string;
         if (signals.modelEmotion) {
-          const intensity = determineIntensity(text, signals.modelConfidence);
-          return getReactionId(signals.modelEmotion, intensity);
+          const intensity = determineIntensity(
+            signals.modelConfidence,
+            signals.uncertaintyScore,
+          );
+          state = getReactionId(signals.modelEmotion, intensity);
+        } else if (signals.sentimentValence > 0.3) {
+          // Fallback to sentiment valence when ML inference wasn't available
+          state = "desire-encourage";
+        } else if (signals.sentimentValence < -0.3) {
+          state = "anger-acknowledge";
+        } else {
+          state = "listening";
         }
 
-        // Fallback to sentiment valence
-        if (signals.sentimentValence > 0.3) return "desire-encourage";
-        if (signals.sentimentValence < -0.3) return "anger-acknowledge";
+        // Forward the full signal set — everything processAndClassify
+        // returned, plus the transcript and the reaction state derived
+        // from it — so consumers can inspect model output, smoothing,
+        // complexity/uncertainty, and the lexical explanation directly.
+        onEmotionDebug?.({
+          ...signals,
+          transcript: text,
+          state,
+        });
 
-        return "listening";
+        return state;
       } catch (error) {
         console.warn("[useAvatarController] Emotion analysis failed:", error);
         return "listening";
       }
     },
-    [],
+    [onEmotionDebug],
   );
 
   // Update emotion based on speaking/listening state

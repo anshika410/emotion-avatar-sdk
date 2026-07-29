@@ -5,3 +5,7 @@ export { AnimatedAvatar } from "./components/AnimatedAvatar";
 export type {
   AnimatedAvatarProps,
 } from "./components/AnimatedAvatar";
+
+export type {
+  EmotionDebugInfo
+} from "./hooks/useAvatarController"

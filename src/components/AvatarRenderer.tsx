@@ -1,3 +1,4 @@
+// emotion-sdk-v0.1.2\src\components\AvatarRenderer.tsx
 import React from "react";
 import "./zoe-mascot/core/zoe-mascot.js";
 
