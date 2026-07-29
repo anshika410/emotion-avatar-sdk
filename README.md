@@ -184,6 +184,38 @@ Apply inline styles directly to the avatar.
 
 ---
 
+## Avatar Assets Setup
+
+The SDK requires WebP avatar assets to display emotions. You have two options:
+
+### Option 1: Use Default Assets (Recommended)
+
+Copy the assets from the package to your app's public folder:
+
+```bash
+# Create assets folder in your public directory
+mkdir -p public/assets
+
+# Copy all WebP files from the package
+cp -r node_modules/emotion-avatar-sdk/dist/src/assets/* public/assets/
+```
+
+The SDK will automatically load assets from `/assets/` at runtime.
+
+### Option 2: Custom Assets
+
+Place your custom WebP files in `public/assets/` with the following filenames:
+
+**Base Mascot Assets:**
+- `Love-Strong.webp`, `gentle-love.webp`, `happy_strong.webp`, `happy_gentle.webp`
+- `thinking.webp`, `surprise.webp`, `anger.webp`, `disgust.webp`, `fear.webp`
+- `sad-Strong.webp`, `sad-gentle.webp`, `celebration.webp`, `shoked.webp`
+
+**Speaking Assets:**
+- `speaking_happy.webp`, `speaking_neutral.webp`, `sad-speaking_gentle.webp`
+
+> **Note:** The SDK expects assets at `/assets/` (relative to your app root). Ensure your WebP files are optimized and under 1MB each for best performance.
+
 ## Documentation
 
 The SDK architecture, implementation details, and package structure are documented separately in **`PACKAGE_ARCHITECTURE.md`**.

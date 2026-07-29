@@ -1,4 +1,5 @@
-const ASSET_BASE_PATH = "/node_modules/emotion-avatar-sdk/src/assets";
+/** Base path for mascot assets - defaults to public/assets folder in consumer apps */
+export const ASSET_BASE_PATH = "/assets";
 
 /** Source of Truth mapping: Base mascot asset names */
 export type BaseMascotKey =
