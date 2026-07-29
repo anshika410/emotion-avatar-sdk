@@ -4,7 +4,7 @@ import {
   type TextClassificationOutput,
 } from "@huggingface/transformers";
 import type { EmotionLabel } from "../../types/emotion";
-import { getReactionId } from "../../components/zoe-mascot/emotions/index.js";
+import { resolveBaseMascotKey } from "../../constants/emotionAssets";
 
 // Allow local bundled model only — block accidental CDN fetch
 env.allowRemoteModels = true;
@@ -118,7 +118,7 @@ export async function classifyEmotion(
     }
 
     const intensity = determineIntensity(text, maxScore);
-    const specificEmotionId = getReactionId(topEmotion, intensity);
+    const specificEmotionId = resolveBaseMascotKey(topEmotion);
 
     return {
       topEmotion,

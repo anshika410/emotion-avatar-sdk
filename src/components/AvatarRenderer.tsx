@@ -1,6 +1,6 @@
-// emotion-sdk-v0.1.2\src\components\AvatarRenderer.tsx
 import React from "react";
-import "./zoe-mascot/core/zoe-mascot.js";
+import "./zoeMascot.js";
+import { getMascotAssetUrl } from "../constants/emotionAssets";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -13,6 +13,8 @@ declare global {
           HTMLElement
         > & {
           emotion?: string;
+          "is-speaking"?: string;
+          speaking?: boolean;
           autoplay?: boolean;
           loop?: boolean;
           speed?: number;
@@ -22,8 +24,9 @@ declare global {
   }
 }
 
-interface AvatarRendererProps {
+export interface AvatarRendererProps {
   emotionId: string;
+  isSpeaking?: boolean;
   /** CSS class applied to the avatar container */
   className?: string;
   /** Inline styles merged with default presentation */
@@ -33,6 +36,7 @@ interface AvatarRendererProps {
 
 export function AvatarRenderer({
   emotionId,
+  isSpeaking = false,
   className,
   style: userStyle,
   speed = 1,
@@ -44,19 +48,30 @@ export function AvatarRenderer({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+    backgroundColor: "#ffffff",
+    borderRadius: "16px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
   };
 
   const mergedStyle = { ...defaultContainerStyle, ...userStyle };
+  const assetUrl = getMascotAssetUrl(emotionId, isSpeaking);
 
   return (
     <div style={mergedStyle} className={className}>
       <zoe-mascot
         emotion={emotionId}
+        is-speaking={isSpeaking ? "true" : "false"}
         autoplay
         loop
         speed={speed}
-        style={{ width: "100%", height: "100%" }}
-      />
+        style={{ width: "100%", height: "100%", backgroundColor: "#ffffff" }}
+      >
+        <img
+          src={assetUrl}
+          alt={emotionId}
+          style={{ width: "100%", height: "100%", objectFit: "contain", backgroundColor: "#ffffff" }}
+        />
+      </zoe-mascot>
     </div>
   );
 }

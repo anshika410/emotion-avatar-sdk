@@ -1,68 +1,27 @@
 // emotion-sdk-v0.1.2\src\hooks\useAvatarController.ts
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { EmotionState } from "../types/emotion";
 import { processAndClassify } from "../services/emotion/emotionStreamProcessor.js";
 import {
   warmUpEmotionModel,
   disposeEmotionModel,
 } from "../services/emotion/onnxRuntime";
-import { getReactionId } from "../components/zoe-mascot/emotions/index.js";
 
 export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
-  [EmotionState.LISTEN]: "listening",
-  [EmotionState.SPEAK_NEUTRAL]: "neutral-focused",
-  [EmotionState.ENCOURAGE]: "desire-encourage",
-  [EmotionState.THINK]: "neutral-present",
-  [EmotionState.CAUTION]: "anger-acknowledge",
-  [EmotionState.CELEBRATE]: "happy-celebrate",
-  [EmotionState.HAPPY]: "happy-warm",
-  [EmotionState.SAD]: "sadness-concern",
-  [EmotionState.ANGRY]: "disgust-recognize",
-  [EmotionState.SURPRISED]: "surprise-notice",
-  [EmotionState.SHOCK]: "fear-reassure",
-  [EmotionState.CONFUSE]: "confusion-curious",
+  [EmotionState.LISTEN]: "thinking",
+  [EmotionState.SPEAK_NEUTRAL]: "thinking",
+  [EmotionState.ENCOURAGE]: "Love-Strong",
+  [EmotionState.THINK]: "thinking",
+  [EmotionState.CAUTION]: "anger",
+  [EmotionState.CELEBRATE]: "happy_strong",
+  [EmotionState.HAPPY]: "happy_strong",
+  [EmotionState.SAD]: "sad-Strong",
+  [EmotionState.ANGRY]: "anger",
+  [EmotionState.SURPRISED]: "surprise",
+  [EmotionState.SHOCK]: "fear",
+  [EmotionState.CONFUSE]: "thinking",
 };
 
-/** Intensity bucket used to pick a reaction variant from getReactionId. */
-export type EmotionIntensity = "low" | "medium" | "high";
-
-/**
- * Local replacement for the old `determineIntensity` (previously imported
- * from `emotionClassifier.ts`, which this hook no longer depends on —
- * warm-up/dispose now come from `onnxRuntime.ts` instead).
- *
- * Derives intensity from the model's confidence, discounted by how
- * uncertain the overall classification is (`signals.uncertaintyScore`, which
- * already folds in confidence gap, entropy, and lexical conflict — see
- * emotionStreamProcessor.ts). A high raw confidence paired with high
- * uncertainty (e.g. conflicting cues in the same chunk) is intentionally
- * treated as a weaker reaction, not a strong one.
- *
- * CAVEAT: the previous `determineIntensity(text, confidence)` also took the
- * raw text and may have used cues this version doesn't (length, punctuation,
- * ALL CAPS, etc.). If that nuance mattered for your reactions, port it over
- * from emotionClassifier.ts before retiring that file — this is a
- * best-effort replacement based only on the signals processAndClassify
- * already produces.
- */
-function determineIntensity(confidence: number, uncertaintyScore: number): EmotionIntensity {
-  const adjustedConfidence = confidence * (1 - uncertaintyScore);
-  if (adjustedConfidence >= 0.6) return "high";
-  if (adjustedConfidence >= 0.3) return "medium";
-  return "low";
-}
-
-/**
- * Everything `processAndClassify` returns (modelEmotion, modelConfidence,
- * emotionScores, complexity/uncertainty breakdowns, topEmotions,
- * explanation, contrastShiftDetected, ...) plus the raw transcript that
- * produced it and the final avatar reaction chosen from it.
- *
- * Typed via `Awaited<ReturnType<typeof processAndClassify>>` rather than a
- * hand-written field list, so every field that pipeline returns is
- * automatically forwarded to `onEmotionDebug` — nothing to keep in sync by
- * hand if the pipeline's return shape changes later.
- */
 export type EmotionDebugInfo = Awaited<ReturnType<typeof processAndClassify>> & {
   transcript: string;
   state: string;
@@ -84,69 +43,70 @@ export interface AvatarControllerReturn {
 }
 
 export function useAvatarController({
-  isSpeaking = false,
-  isListening = false,
   onEmotionDebug,
 }: UseAvatarControllerProps = {}): AvatarControllerReturn {
-  const [emotionId, setEmotionId] = useState<string>("listening");
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [emotionId, setEmotionId] = useState<string>("thinking");
+  const [isInitialized, setIsInitialized] = useState(true);
 
-  // Warm up the ONNX emotion model on mount
+  // Store debug callback in ref to maintain a 100% stable analyzeEmotion reference
+  const onEmotionDebugRef = useRef(onEmotionDebug);
   useEffect(() => {
-    warmUpEmotionModel({ useWorkerProxy: false, numThreads: 1, })
-      .then(() => setIsInitialized(true))
-      .catch((err: unknown) => {
-        console.warn(
-          "[EmotionController] ONNX model warm-up warning:",
-          err,
-        );
-        setIsInitialized(true);
-      });
+    onEmotionDebugRef.current = onEmotionDebug;
+  }, [onEmotionDebug]);
+
+  // Warm up the ONNX emotion model asynchronously in background without blocking UI thread
+  useEffect(() => {
+    let isCancelled = false;
+
+    const timer = setTimeout(() => {
+      warmUpEmotionModel({ useWorkerProxy: true, numThreads: 1 })
+        .then(() => {
+          if (!isCancelled) setIsInitialized(true);
+        })
+        .catch((err: unknown) => {
+          console.warn("[EmotionController] Background ONNX model warm-up notice:", err);
+          if (!isCancelled) setIsInitialized(true);
+        });
+    }, 10);
+
     return () => {
+      isCancelled = true;
+      clearTimeout(timer);
       disposeEmotionModel();
     };
   }, []);
 
-  // Set emotion manually (supports EmotionState enum or specific emotion string ID)
+  // Set emotion manually (supports EmotionState enum, 28 model emotions, base mascot keys, or legacy string IDs)
   const setEmotion = useCallback((emotion: EmotionState | string) => {
     if (typeof emotion === "string" && emotion in EMOTION_STATE_MAP) {
       setEmotionId(EMOTION_STATE_MAP[emotion as EmotionState]);
     } else if (typeof emotion === "string") {
       setEmotionId(emotion);
     } else {
-      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "listening");
+      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "thinking");
     }
   }, []);
 
-  // Analyze emotion from text
+  // Analyze emotion from text with stable function identity
   const analyzeEmotion = useCallback(
     async (text: string, bypassChunkSizeGate: boolean = false): Promise<string> => {
-      if (!text.trim()) return "listening";
+      if (!text.trim()) return "thinking";
 
       try {
-        const signals = await processAndClassify(text, bypassChunkSizeGate) ;
+        const signals = await processAndClassify(text, bypassChunkSizeGate);
 
         let state: string;
         if (signals.modelEmotion) {
-          const intensity = determineIntensity(
-            signals.modelConfidence,
-            signals.uncertaintyScore,
-          );
-          state = getReactionId(signals.modelEmotion, intensity);
+          state = signals.modelEmotion;
         } else if (signals.sentimentValence > 0.3) {
-          // Fallback to sentiment valence when ML inference wasn't available
-          state = "desire-encourage";
+          state = "approval";
         } else if (signals.sentimentValence < -0.3) {
-          state = "anger-acknowledge";
+          state = "annoyance";
         } else {
-          state = "listening";
+          state = "neutral";
         }
 
-        // Forward the full signal set — everything processAndClassify
-        // returned, plus the transcript and the reaction state derived
-        // from it — so consumers can inspect model output, smoothing,
-        // complexity/uncertainty, and the lexical explanation directly.
-        onEmotionDebug?.({
+        onEmotionDebugRef.current?.({
           ...signals,
           transcript: text,
           state,
@@ -154,23 +114,12 @@ export function useAvatarController({
 
         return state;
       } catch (error) {
-        console.warn("[useAvatarController] Emotion analysis failed:", error);
-        return "listening";
+        console.warn("[useAvatarController] Emotion analysis fallback:", error);
+        return "thinking";
       }
     },
-    [onEmotionDebug],
+    [],
   );
-
-  // Update emotion based on speaking/listening state
-  useEffect(() => {
-    if (isSpeaking && !isListening) {
-      setEmotionId("neutral-focused");
-    } else if (!isSpeaking && isListening) {
-      setEmotionId("listening");
-    } else {
-      setEmotionId("listening");
-    }
-  }, [isSpeaking, isListening]);
 
   return {
     isInitialized,

@@ -1,6 +1,5 @@
 // emotion-sdk-v0.1.2\src\components\AnimatedAvatar.tsx
 import { useEffect, useRef } from "react";
-import { EmotionState } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
 import { useAvatarController, type EmotionDebugInfo } from "../hooks/useAvatarController";
 import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
@@ -48,27 +47,37 @@ export function AnimatedAvatar({
   const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Message deduplication refs to prevent infinite re-analysis loops
+  const lastAnalyzedAiMessage = useRef<string>("");
+  const lastAnalyzedInterim = useRef<string>("");
+  const lastAnalyzedFinal = useRef<string>("");
+
   useEffect(() => {
     onInitialized?.(isInitialized);
   }, [isInitialized, onInitialized]);
 
   useEffect(() => {
-    if (aiMessage && isInitialized && isSpeaking) {
-      setEmotion(EmotionState.SPEAK_NEUTRAL);
-    }
-  }, [aiMessage, isInitialized, analyzeEmotion, setEmotion]);
+    if (!aiMessage || !isInitialized || !isSpeaking) return;
+    if (lastAnalyzedAiMessage.current === aiMessage) return;
+
+    lastAnalyzedAiMessage.current = aiMessage;
+    analyzeEmotion(aiMessage, true).then((detected: string) => {
+      if (detected) setEmotion(detected);
+    });
+  }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
 
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
+    if (lastAnalyzedInterim.current === userMessageInterim) return;
 
     const wordCount = userMessageInterim.trim().split(/\s+/).length;
     const charCount = userMessageInterim.length;
 
     if (wordCount > 3 || charCount > 20) {
+      lastAnalyzedInterim.current = userMessageInterim;
       analyzeEmotion(userMessageInterim).then((detected: string) => {
         setEmotion(detected);
-      }
-      );
+      });
     }
 
     // Restart inactivity timer
@@ -85,12 +94,13 @@ export function AnimatedAvatar({
         clearTimeout(interimResetTimeout.current);
       }
     };
-
   }, [userMessageInterim, isInitialized, analyzeEmotion, setEmotion]);
-
 
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
+    if (lastAnalyzedFinal.current === userMessageFinal) return;
+
+    lastAnalyzedFinal.current = userMessageFinal;
 
     const processFinalEmotion = async () => {
       const detected = await analyzeEmotion(userMessageFinal, true);
@@ -135,7 +145,7 @@ export function AnimatedAvatar({
             width: loadingSize,
             height: loadingSize,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #e0e0e0 40%, #f8f8f8 100%)",
+            background: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -171,6 +181,7 @@ export function AnimatedAvatar({
     <div className={containerClassName}>
       <AvatarRenderer
         emotionId={emotionId}
+        isSpeaking={isSpeaking}
         className={avatarClassName}
         style={style}
       />

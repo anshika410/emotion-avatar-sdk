@@ -21,6 +21,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
+    "demo": "vite",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
