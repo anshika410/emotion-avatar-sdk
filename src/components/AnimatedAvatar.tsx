@@ -168,28 +168,42 @@ export function AnimatedAvatar({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 1px 8px rgba(82,82,82,0.06)",
+            // boxShadow: "0 1px 8px rgba(82,82,82,0.06)",
           }}
         >
-          <div
-            style={{
-              width: loadingSize * 0.32,
-              height: loadingSize * 0.32,
-              border: `${Math.max(2, loadingSize * 0.036)}px solid #9993`,
-              borderTop: `${Math.max(2, loadingSize * 0.036)}px solid #4f9eed`,
-              borderRadius: "50%",
-              animation: "avatar-spin 1s linear infinite",
-              boxSizing: "border-box",
-            }}
-          />
-          <style>
-            {`
-              @keyframes avatar-spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+          <svg
+            width="100"
+            height="50"
+            viewBox="0 0 180 90"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <style>
+              {`.dot {
+                fill: #0CF075;
+                stroke: #000600;
+                stroke-width: 5;
+                transform-box: fill-box;
+                transform-origin: center;
+                animation: bounce 0.9s ease-in-out infinite;
               }
-            `}
-          </style>
+              .dot--1 { animation-delay: 0s; }
+              .dot--2 { animation-delay: 0.15s; }
+              .dot--3 { animation-delay: 0.3s; }
+          
+              @keyframes bounce {
+                0%, 100% {
+                  transform: translateY(0);
+                }
+                50% {
+                  transform: translateY(-28px);
+                }
+              }`}
+            </style>
+
+            <circle className="dot dot--1" cx="40" cy="60" r="14" />
+            <circle className="dot dot--2" cx="90" cy="60" r="14" />
+            <circle className="dot dot--3" cx="140" cy="60" r="14" />
+          </svg>
         </div>
       </div>
     );

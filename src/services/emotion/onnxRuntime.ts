@@ -1,51 +1,90 @@
-/**
- * emotion-sdk-v0.1.2\src\services\emotion\onnxRuntime.ts
- *
- * Loads the quantized ONNX pipeline (tokenizer + encoder + emotion-classifier head)
- * hosted on the Hugging Face Hub and provides emotion prediction in the browser
- * via onnxruntime-web + @huggingface/transformers.
- *
- * HF repo layout assumed (YashM21/Encoder-Decoder-INT4):
- *   config.json
- *   head_goemotions.onnx        <- classifier head (root)
- *   head_v2b.onnx
- *   special_tokens_map.json
- *   thresholds.json
- *   tokenizer.json
- *   tokenizer_config.json
- *   vocab.txt
- *   onnx/
- *     embedder_v2b_q4.onnx      <- quantized sentence encoder (used here)
- *     encoder_int8.onnx
- *
- * ---------------------------------------------------------------------------
- * Live-traffic additions (mirrors the lifecycle API of emotionClassifier.ts):
- *   - warmUp()   : pays the first-call JIT/allocation cost up front
- *   - isReady()  : cheap readiness check for callers/UI
- *   - dispose()  : releases both ONNX sessions and clears caches
- *   - getStats() : rolling latency stats (avg / p50 / p95 / min / max)
- *
- * Perf notes (read before assuming this hits <5ms):
- *   A real transformer encoder forward pass in WASM (even INT4-quantized) is
- *   realistically 10-100ms per short sentence on CPU, not sub-5ms. Sub-5ms is
- *   only realistic with WebGPU, a much smaller model, or by batching many
- *   inputs into one forward pass. This file gets you as fast as a single
- *   wasm session reasonably can, plus the non-blocking / backpressure
- *   behavior you need for a live UI, and instrumentation (getStats()) to
- *   measure your actual numbers. See the chat response for concrete levers.
- * ---------------------------------------------------------------------------
- */
-
 import {
   AutoTokenizer,
+  env,
   type PreTrainedTokenizer,
 } from "@huggingface/transformers";
 import * as ort from "onnxruntime-web";
 
-// // Ensure onnxruntime-web fetches valid WASM binaries from CDN instead of failing on local HTML 404
-// if (typeof window !== "undefined" && ort && ort.env && ort.env.wasm) {
-//   ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
-// }
+/**
+ * IMPORTANT - read this if caching "isn't helping":
+ *
+ * cachedFetch() below only covers the files THIS code fetches directly:
+ * the two .onnx model files and thresholds.json. It does NOT cover the
+ * onnxruntime-web WASM RUNTIME binaries themselves (ort-wasm*.wasm, several
+ * MB, loaded internally by the ort library based on ort.env.wasm.wasmPaths).
+ * Those are usually the single biggest fetch on the page and are almost
+ * certainly why "cached vs. not" feels identical - if they're re-fetched
+ * every reload, that dwarfs any savings from caching a 15MB encoder file.
+ *
+ * Two things to check:
+ *   1. Are you testing against a Vite/webpack DEV server? Dev servers
+ *      commonly send no-cache headers for everything under /public, so
+ *      even the browser's normal HTTP cache won't hold onto the .wasm
+ *      runtime files across a reload. Test against a PRODUCTION build
+ *      (`vite build && vite preview` or equivalent) before concluding
+ *      caching doesn't work - dev-mode results here are misleading.
+ *   2. If self-hosting the wasm files (via wasmPaths), make sure your
+ *      server/CDN sends long-lived, immutable Cache-Control headers for
+ *      them, e.g. `Cache-Control: public, max-age=31536000, immutable`.
+ *      Filenames from onnxruntime-web are already version-scoped, so this
+ *      is safe.
+ */
+
+// Transformers.js already browser-caches tokenizer.json/vocab.txt/config.json
+// under the hood - this just makes that explicit rather than relying on the
+// library default. The two raw .onnx files + thresholds.json below are
+// fetched with plain fetch() (not through the library), so they need their
+// own Cache Storage handling - see cachedFetch().
+env.useBrowserCache = true;
+
+/**
+ * Bump this if the repo layout or file contents change in a way that should
+ * invalidate previously-cached bytes (e.g. swapping to a different
+ * quantization or repo). Cache Storage has no built-in versioning/ETag
+ * revalidation for arbitrary fetch()es the way HTTP caching does, so a
+ * version suffix in the cache name is the simplest way to force a clean
+ * re-download after a real model change.
+ */
+const ONNX_CACHE_NAME = "emotion-onnx-cache-v1";
+
+/**
+ * Fetches a URL through the browser's Cache Storage API so the ~MB-sized
+ * .onnx files and thresholds.json are only downloaded once per browser,
+ * not on every page refresh. Falls back to a normal network fetch on a
+ * cache miss and populates the cache for next time.
+ *
+ * Logs a hit/miss + timing for each call - this is deliberate: "caching
+ * doesn't seem to help" is nearly always one of (a) it's actually still
+ * missing the cache for a reason that isn't obvious from the outside, or
+ * (b) the cache IS hitting but something else entirely (WASM compile,
+ * not I/O) is what's actually slow. This makes it visible which one you're
+ * looking at instead of guessing.
+ */
+async function cachedFetch(url: string): Promise<Response> {
+  const t0 = now();
+  const cache = await caches.open(ONNX_CACHE_NAME);
+  const cached = await cache.match(url);
+  if (cached) {
+    console.log(
+      `[ONNXEmotionModel] cache HIT  ${url} (${(now() - t0).toFixed(0)}ms)`,
+    );
+    return cached;
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+  // Cache Storage requires cloning: the original response body can only be
+  // consumed once, and we still need to return an unconsumed one to the caller.
+  await cache.put(url, response.clone());
+  console.log(
+    `[ONNXEmotionModel] cache MISS ${url} (${(now() - t0).toFixed(0)}ms, now cached)`,
+  );
+  return response;
+}
 
 export interface EmotionPrediction {
   label: string;
@@ -60,68 +99,33 @@ export interface InferenceStats {
   minMs: number;
   maxMs: number;
   lastMs: number;
-  /** Requests currently queued behind an in-flight inference call. */
   pending: number;
 }
 
 export interface ONNXEmotionModelOptions {
-  /** Hugging Face repo id, e.g. "YashM21/Encoder-Decoder-INT4" */
   repoId?: string;
-  /** Path (relative to repo root) to the sentence-encoder ONNX file */
   encoderPath?: string;
-  /** Path (relative to repo root) to the classifier-head ONNX file */
   classifierPath?: string;
-  /** Path (relative to repo root) to thresholds.json */
   thresholdsPath?: string;
-  /** Max sequence length passed to the tokenizer */
   maxLength?: number;
-  /** Override onnxruntime-web wasm asset path (needed for bundlers) */
   wasmPaths?: string;
-  /**
-   * onnxruntime-web execution providers, defaults to ["wasm"]. Add "webgpu"
-   * first (e.g. ["webgpu", "wasm"]) if you need to get anywhere close to a
-   * <5ms budget — wasm alone is unlikely to get you there for a full
-   * encoder forward pass.
-   */
   executionProviders?: ort.InferenceSession.ExecutionProviderConfig[];
   /**
-   * wasm thread pool size. Only takes effect if the page is cross-origin
-   * isolated (COOP/COEP headers) — otherwise the browser silently caps this
-   * at 1 and this setting is a no-op. Defaults to min(hardwareConcurrency, 4).
+   * ONNX Runtime graph optimization level. "all" (the previous hardcoded
+   * default) produces the fastest INFERENCE but spends more time optimizing
+   * the graph on every single session creation - and that optimization
+   * step re-runs on every page reload with no way to cache/persist the
+   * optimized result in the browser. If your bottleneck turns out to be
+   * session-creation time (see the new per-step console logs in init()),
+   * try "basic" here and compare - you're trading a bit of steady-state
+   * inference speed for meaningfully faster time-to-ready. Default: "all".
    */
+  graphOptimizationLevel?: "disabled" | "basic" | "extended" | "all";
   numThreads?: number;
-  /**
-   * Runs the wasm backend on a Worker instead of the main thread, so a slow
-   * inference call never blocks UI rendering / scrolling / typing. Strongly
-   * recommended for a live-transcript UI. Default: true.
-   */
   useWorkerProxy?: boolean;
-  /**
-   * Max number of most-recent (text,k,applyThreshold) -> prediction results
-   * to cache. Genuinely useful here: streaming ASR frequently re-emits the
-   * same interim partial transcript several times before it finalizes, so
-   * an exact-match cache skips redundant inference for free. 0 disables it.
-   * Default: 50.
-   */
   cacheSize?: number;
-  /** Rolling window size used for getStats(). Default: 100. */
   statsWindow?: number;
-  /**
-   * How many inference calls may run concurrently against the shared
-   * sessions. Default: 1 (safe/serial). Only raise this if you've verified
-   * your onnxruntime-web version/build behaves correctly under concurrent
-   * run() calls on the same session — otherwise leave it at 1 and scale
-   * throughput via true batching or a session pool instead.
-   */
   maxConcurrentInference?: number;
-  /**
-   * Max number of requests allowed to sit in the queue behind an in-flight
-   * call. When exceeded, the OLDEST queued (not-yet-started) request is
-   * dropped and its promise rejects with a "SUPERSEDED" error. This is the
-   * right behavior for live captions: if you fall behind, drop stale
-   * partial-transcript requests rather than processing an ever-growing
-   * backlog of outdated text. Default: 50 (~1s of backlog at 50 req/s).
-   */
   maxQueueDepth?: number;
 }
 
@@ -139,10 +143,6 @@ function now(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
-/**
- * Any tensor-like object with numeric/bigint typed data and shape (dims).
- * @huggingface/transformers' Tensor type satisfies this shape.
- */
 interface TensorLike {
   data: Int32Array | BigInt64Array | Float32Array | number[] | bigint[];
   dims: number[];
@@ -155,7 +155,6 @@ function toBigInt64Tensor(t: TensorLike): ort.Tensor {
   return new ort.Tensor("int64", BigInt64Array.from(flat), t.dims);
 }
 
-/** Small exact-match LRU cache for (text,k,applyThreshold) -> predictions. */
 class LRUCache<K, V> {
   private map = new Map<K, V>();
   constructor(private maxSize: number) {}
@@ -164,7 +163,7 @@ class LRUCache<K, V> {
     if (!this.map.has(key)) return undefined;
     const v = this.map.get(key)!;
     this.map.delete(key);
-    this.map.set(key, v); // refresh recency
+    this.map.set(key, v);
     return v;
   }
 
@@ -189,14 +188,6 @@ interface QueuedTask<T> {
   reject: (e: unknown) => void;
 }
 
-/**
- * Bounded FIFO scheduler in front of the ONNX sessions. Serializes calls
- * (by default) so overlapping predict() calls can't race on shared session
- * state, and applies backpressure by dropping the oldest not-yet-started
- * request once the backlog gets too deep — this is what keeps a live system
- * from accumulating an ever-growing, increasingly-stale queue under burst
- * load instead of just falling further and further behind.
- */
 class InferenceScheduler {
   private queue: QueuedTask<unknown>[] = [];
   private active = 0;
@@ -225,7 +216,6 @@ class InferenceScheduler {
     });
   }
 
-  /** Rejects everything still queued. Used on dispose(). */
   clear(reason: string): void {
     while (this.queue.length) {
       const task = this.queue.shift();
@@ -265,6 +255,11 @@ export class ONNXEmotionModel {
   private readonly thresholdsPath: string;
   private readonly maxLength: number;
   private readonly executionProviders: ort.InferenceSession.ExecutionProviderConfig[];
+  private readonly graphOptimizationLevel:
+    | "disabled"
+    | "basic"
+    | "extended"
+    | "all";
 
   private readonly scheduler: InferenceScheduler;
   private readonly cache: LRUCache<string, EmotionPrediction[]>;
@@ -278,6 +273,7 @@ export class ONNXEmotionModel {
     this.thresholdsPath = options.thresholdsPath ?? DEFAULT_THRESHOLDS_PATH;
     this.maxLength = options.maxLength ?? DEFAULT_MAX_LENGTH;
     this.executionProviders = options.executionProviders ?? ["wasm"];
+    this.graphOptimizationLevel = options.graphOptimizationLevel ?? "all";
 
     this.scheduler = new InferenceScheduler(
       options.maxConcurrentInference ?? DEFAULT_MAX_CONCURRENT,
@@ -286,15 +282,12 @@ export class ONNXEmotionModel {
     this.cache = new LRUCache(options.cacheSize ?? DEFAULT_CACHE_SIZE);
     this.statsWindow = options.statsWindow ?? DEFAULT_STATS_WINDOW;
 
-    // --- perf: configure the wasm backend before any session is created ---
     const defaultThreads =
       typeof navigator !== "undefined"
         ? Math.min(navigator.hardwareConcurrency || 4, 4)
         : 4;
     ort.env.wasm.numThreads = options.numThreads ?? defaultThreads;
     ort.env.wasm.simd = true;
-    // Keeps inference off the main/UI thread so a live transcript view never
-    // stutters while a prediction is running.
     ort.env.wasm.proxy = options.useWorkerProxy ?? true;
 
     if (options.wasmPaths) {
@@ -311,7 +304,6 @@ export class ONNXEmotionModel {
     return model;
   }
 
-  /** Loads the tokenizer, both ONNX sessions, and thresholds.json. Safe to call multiple times. */
   async init(): Promise<void> {
     if (this.disposed) {
       throw new Error(
@@ -324,49 +316,67 @@ export class ONNXEmotionModel {
     this.initPromise = (async () => {
       const startMs = now();
 
+      const tokenizerStart = now();
       this.tokenizer = (await AutoTokenizer.from_pretrained(
         this.repoId,
       )) as PreTrainedTokenizer;
+      console.log(
+        `[ONNXEmotionModel] tokenizer loaded in ${(now() - tokenizerStart).toFixed(0)}ms`,
+      );
 
+      const fetchStart = now();
       const [encoderBuf, classifierBuf, thresholdsJson] = await Promise.all([
         this.fetchArrayBuffer(this.resolveUrl(this.encoderPath)),
         this.fetchArrayBuffer(this.resolveUrl(this.classifierPath)),
         this.fetchJson(this.resolveUrl(this.thresholdsPath)),
       ]);
+      console.log(
+        `[ONNXEmotionModel] all fetches settled in ${(now() - fetchStart).toFixed(0)}ms`,
+      );
 
       const sessionOptions: ort.InferenceSession.SessionOptions = {
         executionProviders: this.executionProviders,
-        graphOptimizationLevel: "all",
+        graphOptimizationLevel: this.graphOptimizationLevel,
         executionMode: "parallel",
       };
 
-      const [encoderSession, classifierSession] = await Promise.all([
-        ort.InferenceSession.create(encoderBuf, sessionOptions),
-        ort.InferenceSession.create(classifierBuf, sessionOptions),
-      ]);
+      // Timed separately (not just as a Promise.all pair) because these two
+      // numbers are the ones that matter most: this is pure WASM
+      // instantiation + graph-optimization compute, which Cache Storage
+      // cannot speed up at all - it only ever helps the fetch step above.
+      const encoderSessionStart = now();
+      const encoderSession = await ort.InferenceSession.create(
+        encoderBuf,
+        sessionOptions,
+      );
+      console.log(
+        `[ONNXEmotionModel] encoder session created in ${(now() - encoderSessionStart).toFixed(0)}ms`,
+      );
+
+      const classifierSessionStart = now();
+      const classifierSession = await ort.InferenceSession.create(
+        classifierBuf,
+        sessionOptions,
+      );
+      console.log(
+        `[ONNXEmotionModel] classifier session created in ${(now() - classifierSessionStart).toFixed(0)}ms`,
+      );
+
       this.encoderSession = encoderSession;
       this.classifierSession = classifierSession;
 
       this.thresholds = thresholdsJson as Record<string, number>;
-      // Classifier exposes one output per emotion label, mirroring the Python version.
       this.emotionLabels = Array.from(this.classifierSession.outputNames);
 
       this.initialized = true;
       console.log(
-        `[ONNXEmotionModel] Sessions loaded in ${(now() - startMs).toFixed(0)}ms`,
+        `[ONNXEmotionModel] TOTAL init() in ${(now() - startMs).toFixed(0)}ms`,
       );
     })();
 
     return this.initPromise;
   }
 
-  /**
-   * Runs one throwaway inference so wasm kernel compilation, memory-arena
-   * allocation, and tokenizer warm-caches are all paid for before live
-   * traffic arrives. Skipping this means your first real request eats a
-   * one-time cost (often hundreds of ms) that will blow any latency budget
-   * and can visibly stall the first caption.
-   */
   async warmUp(
     sampleText = "This is a warm up sentence to initialize the model.",
   ): Promise<void> {
@@ -382,8 +392,6 @@ export class ONNXEmotionModel {
     await this.predictTopK(sampleText, 1, false);
     this.warmedUp = true;
 
-    // The warm-up call isn't representative of real traffic — don't let it
-    // skew stats or occupy a cache slot a real caller might want.
     this.resetStats();
     this.cache.clear();
 
@@ -392,12 +400,10 @@ export class ONNXEmotionModel {
     );
   }
 
-  /** True once the model is loaded, warmed up, and not disposed. */
   isReady(): boolean {
     return this.initialized && this.warmedUp && !this.disposed;
   }
 
-  /** Releases both ONNX sessions, rejects any queued work, and clears caches/stats. */
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
@@ -428,7 +434,6 @@ export class ONNXEmotionModel {
     console.log("[ONNXEmotionModel] Disposed");
   }
 
-  /** Rolling inference-latency stats (post tokenize+encode+classify, excludes cache hits). */
   getStats(): InferenceStats {
     const n = this.latencies.length;
     if (n === 0) {
@@ -473,26 +478,34 @@ export class ONNXEmotionModel {
   }
 
   private async fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch ${url}: ${res.status} ${res.statusText}`,
-      );
-    }
+    const res = await cachedFetch(url);
     return res.arrayBuffer();
   }
 
   private async fetchJson(url: string): Promise<unknown> {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch ${url}: ${res.status} ${res.statusText}`,
-      );
-    }
+    const res = await cachedFetch(url);
     return res.json();
   }
 
-  /** Tokenize and return a normalised sentence embedding (batch=1 x hidden). */
+  /**
+   * Deletes this model's cached .onnx/.json files from Cache Storage, so
+   * the next init() re-downloads fresh copies. Use this after shipping a
+   * new model version under the same repoId/paths, or to free up the
+   * browser's cache storage quota. Does NOT affect the tokenizer's own
+   * Transformers.js-managed cache - see clearEmotionModelCache() for a
+   * convenience wrapper that also covers that if needed.
+   */
+  async clearCache(): Promise<void> {
+    const cache = await caches.open(ONNX_CACHE_NAME);
+    const keys = await cache.keys();
+    const repoUrlPrefix = `https://huggingface.co/${this.repoId}/`;
+    await Promise.all(
+      keys
+        .filter((req) => req.url.startsWith(repoUrlPrefix))
+        .map((req) => cache.delete(req)),
+    );
+  }
+
   private async meanPoolEmbedding(
     text: string,
   ): Promise<{ data: Float32Array; hidden: number }> {
@@ -519,7 +532,7 @@ export class ONNXEmotionModel {
 
     const output = await this.encoderSession.run(feeds);
     const outputName = this.encoderSession.outputNames[0];
-    const tokenEmbeds = output[outputName]; // shape [batch, seq, hidden]
+    const tokenEmbeds = output[outputName];
 
     const [batch, seq, hidden] = tokenEmbeds.dims as number[];
     const embedData = tokenEmbeds.data as Float32Array;
@@ -572,7 +585,7 @@ export class ONNXEmotionModel {
     const output = await this.classifierSession.run(feeds);
 
     let preds: EmotionPrediction[] = this.emotionLabels.map((label) => {
-      const out = output[label]; // shape (1, 2) - class 1 is the positive probability
+      const out = output[label];
       const data = out.data as Float32Array;
       return { label, probability: data[1] };
     });
@@ -588,17 +601,6 @@ export class ONNXEmotionModel {
     return preds.slice(0, k);
   }
 
-  /**
-   * Return the top-k (label, probability) pairs for `text`.
-   * If `applyThreshold` is true, only emotions with score >= threshold are kept,
-   * and the result may contain fewer than k items.
-   *
-   * Exact-repeat requests (same text/k/applyThreshold) are served from an LRU
-   * cache without touching the model. New requests are queued through a
-   * bounded scheduler — if the backlog is too deep the oldest queued request
-   * is dropped and rejects with a "SUPERSEDED" error, which callers in a
-   * live pipeline should treat as "skip this one, a newer one is coming."
-   */
   async predictTopK(
     text: string,
     k = 3,
@@ -628,15 +630,8 @@ export class ONNXEmotionModel {
   }
 }
 
-// ----- Convenience top-level functions (use a lazily-created default instance) -----
-
 let defaultPredictor: ONNXEmotionModel | null = null;
 
-/**
- * Simple wrapper mirroring the Python `predict_topk` helper.
- * `model` can be an ONNXEmotionModel instance, options for creating one, or omitted
- * to use/create a shared default instance.
- */
 export async function predictTopK(
   text: string,
   k = 3,
@@ -658,7 +653,6 @@ export async function predictTopK(
   return predictor.predictTopK(text, k);
 }
 
-/** Loads + warms up the shared default model. Call this once at app startup. */
 export async function warmUpEmotionModel(
   options?: ONNXEmotionModelOptions,
 ): Promise<void> {
@@ -675,8 +669,8 @@ export function isEmotionModelReady(): boolean {
 export async function disposeEmotionModel(): Promise<void> {
   if (defaultPredictor) {
     const toDispose = defaultPredictor;
-    defaultPredictor = null; // release the slot immediately so a new mount can create a fresh instance
-    await toDispose.dispose(); // let it finish disposing in the background
+    defaultPredictor = null;
+    await toDispose.dispose();
   }
 }
 
@@ -684,13 +678,20 @@ export function getEmotionModelStats(): InferenceStats | null {
   return defaultPredictor?.getStats() ?? null;
 }
 
-// ---------------------------------------------------------------------
-// Example usage (mirrors the Python `if __name__ == "__main__":` block).
-// Call this from your app, e.g. a button handler or a dev-only script.
-// ---------------------------------------------------------------------
+/**
+ * Clears cached .onnx/thresholds.json bytes for the shared default model
+ * (or for the whole ONNX_CACHE_NAME bucket if no instance has been created
+ * yet). Call this once after shipping a new model version so returning
+ * users get the new files instead of stale cached ones under the same URLs.
+ */
+export async function clearEmotionModelCache(): Promise<void> {
+  if (defaultPredictor) {
+    await defaultPredictor.clearCache();
+  } else {
+    await caches.delete(ONNX_CACHE_NAME);
+  }
+}
 
-// To test run this script use:
-// npx tsx /path_to_file_where_it's_called
 export async function runExample(): Promise<void> {
   const predictor = await ONNXEmotionModel.create(); // init() + warmUp() already done
 
