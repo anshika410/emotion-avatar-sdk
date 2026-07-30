@@ -6,6 +6,7 @@ import {
   type EmotionDebugInfo,
 } from "../hooks/useAvatarController";
 import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
+import { BASE_MASCOT_ASSETS } from "../constants/emotionAssets";
 
 export interface AnimatedAvatarProps {
   aiMessage?: string;
@@ -69,7 +70,7 @@ export function AnimatedAvatar({
 
       if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
       aiResetTimeout.current = setTimeout(() => {
-        setEmotion("happy_gentle");
+        setEmotion("neutral");
       }, 1000);
     });
 
@@ -84,22 +85,7 @@ export function AnimatedAvatar({
     if (!userMessageInterim || !isInitialized) return;
     if (lastAnalyzedInterim.current === userMessageInterim) return;
 
-    const trimmed = userMessageInterim.trim();
-    const hasSentenceBoundary = /[.!?;\n]$/.test(trimmed);
-
-    if (hasSentenceBoundary) {
-      lastAnalyzedInterim.current = userMessageInterim;
-      analyzeEmotion(userMessageInterim, true).then((detected: string) => {
-        if (detected) setEmotion(detected);
-
-        if (interimResetTimeout.current)
-          clearTimeout(interimResetTimeout.current);
-        interimResetTimeout.current = setTimeout(() => {
-          resetEmotionProcessing();
-          setEmotion("happy_gentle");
-        }, 3500);
-      });
-    }
+    // const trimmed = userMessageInterim.trim();
 
     return () => {
       if (interimResetTimeout.current) {
@@ -117,12 +103,6 @@ export function AnimatedAvatar({
 
     const processFinalEmotion = async () => {
       const detected = await analyzeEmotion(userMessageFinal, true);
-      console.log(
-        "this emotion got detected by model",
-        userMessageFinal,
-        ":",
-        detected,
-      );
       // Display the detected emotion
       setEmotion(detected);
 
@@ -131,11 +111,11 @@ export function AnimatedAvatar({
         clearTimeout(finalResetTimeout.current);
       }
 
-      // After long pause (3.5 seconds), return back to neutral emotion ("happy_gentle")
+      // After long pause (3.5 seconds), return back to neutral emotion ("neutral")
       finalResetTimeout.current = setTimeout(() => {
         resetEmotionProcessing();
-        setEmotion("happy_gentle");
-      }, 3500);
+        setEmotion("neutral");
+      }, 1000);
     };
 
     processFinalEmotion();
@@ -176,7 +156,7 @@ export function AnimatedAvatar({
         >
           {/* Default WebP loading image */}
           <img
-            src="/assets/happy_gentle.webp"
+            src={BASE_MASCOT_ASSETS.neutral}
             alt="Loading avatar"
             style={{
               width: "100%",

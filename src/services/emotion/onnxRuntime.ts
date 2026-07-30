@@ -61,14 +61,16 @@ const ONNX_CACHE_NAME = "emotion-onnx-cache-v1";
  * looking at instead of guessing.
  */
 async function cachedFetch(url: string): Promise<Response> {
-  const t0 = now();
-  const cache = await caches.open(ONNX_CACHE_NAME);
-  const cached = await cache.match(url);
-  if (cached) {
-    console.log(
-      `[ONNXEmotionModel] cache HIT  ${url} (${(now() - t0).toFixed(0)}ms)`,
-    );
-    return cached;
+  if (typeof caches !== "undefined") {
+    try {
+      const cache = await caches.open(ONNX_CACHE_NAME);
+      const cached = await cache.match(url);
+      if (cached) {
+        return cached;
+      }
+    } catch {
+      // Ignore cache storage match errors
+    }
   }
 
   const response = await fetch(url);
@@ -77,12 +79,16 @@ async function cachedFetch(url: string): Promise<Response> {
       `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
     );
   }
-  // Cache Storage requires cloning: the original response body can only be
-  // consumed once, and we still need to return an unconsumed one to the caller.
-  await cache.put(url, response.clone());
-  console.log(
-    `[ONNXEmotionModel] cache MISS ${url} (${(now() - t0).toFixed(0)}ms, now cached)`,
-  );
+
+  if (typeof caches !== "undefined") {
+    try {
+      const cache = await caches.open(ONNX_CACHE_NAME);
+      await cache.put(url, response.clone());
+    } catch {
+      // Ignore cache storage write errors
+    }
+  }
+
   return response;
 }
 

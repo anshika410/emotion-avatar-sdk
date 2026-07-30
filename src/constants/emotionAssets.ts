@@ -16,7 +16,8 @@ export type BaseMascotKey =
   | "sad-Strong"
   | "celebration"
   | "sad-gentle"
-  | "shoked";
+  | "shoked"
+  | "neutral";
 
 /** Source of Truth mapping from 28 model emotions and synonyms to base mascots */
 export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
@@ -50,7 +51,9 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   relief: "happy_gentle",
   pleased: "happy_gentle",
   content: "happy_gentle",
-  neutral: "happy_gentle",
+
+  // neutral
+  neutral: "neutral",
 
   // thinking
   curiosity: "thinking",
@@ -120,6 +123,7 @@ export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
   "sad-gentle": getAssetUrl("sad-gentle.webp"),
   celebration: getAssetUrl("celebration.webp"),
   shoked: getAssetUrl("shoked.webp"),
+  neutral: getAssetUrl("nuetral.webp"),
 };
 
 const NORMALIZED_BASE_MASCOT_KEYS = Object.fromEntries(
@@ -250,7 +254,7 @@ const NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION = Object.fromEntries(
 
 /** Resolves any emotion input to a base mascot key */
 export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
-  if (!emotionInput) return "happy_gentle";
+  if (!emotionInput) return "neutral";
 
   const normalized = emotionInput.trim().toLowerCase();
 
@@ -272,7 +276,7 @@ export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
   }
 
   // Default fallback for unrecognized emotions
-  return "happy_gentle";
+  return "neutral";
 }
 
 /** Resolves an emotion input and speaking state to the target WebP image URL */
@@ -280,7 +284,7 @@ export function getMascotAssetUrl(
   emotionInput: string,
   isSpeaking: boolean = false,
 ): string {
-  const normalized = emotionInput ? emotionInput.trim().toLowerCase() : "happy_gentle";
+  const normalized = emotionInput ? emotionInput.trim().toLowerCase() : "neutral";
 
   if (isSpeaking) {
     // Check direct model emotion speaking asset
@@ -314,6 +318,7 @@ export function getMascotAssetUrl(
       case "disgust":
       case "fear":
       case "shoked":
+      case "neutral":
       default:
         return SPEAKING_ASSETS.speaking_neutral;
     }
@@ -321,5 +326,5 @@ export function getMascotAssetUrl(
 
   // Idle state: resolve base mascot WebP asset
   const baseKey = resolveBaseMascotKey(normalized);
-  return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS.happy_gentle;
+  return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS.neutral;
 }

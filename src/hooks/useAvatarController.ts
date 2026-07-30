@@ -39,7 +39,7 @@ export interface AvatarControllerReturn {
 
 /** Comprehensive NLP text emotion classifier for sentence-level scoring fallback */
 export function detectRuleBasedEmotion(text: string): string {
-  if (!text || !text.trim()) return "happy_gentle";
+  if (!text || !text.trim()) return "neutral";
   const lower = text.toLowerCase();
 
   // 1. Sadness / Grief / Disappointment / Remorse / Embarrassment
@@ -162,7 +162,7 @@ export function detectRuleBasedEmotion(text: string): string {
   if (signals.sentimentValence > 0.2) return "approval";
   if (signals.sentimentValence < -0.2) return "annoyance";
 
-  return "happy_gentle";
+  return "neutral";
 }
 
 export function useAvatarController({
@@ -170,7 +170,7 @@ export function useAvatarController({
   isListening = false,
   onEmotionDebug,
 }: UseAvatarControllerProps = {}): AvatarControllerReturn {
-  const [emotionId, setEmotionId] = useState<string>("happy_gentle");
+  const [emotionId, setEmotionId] = useState<string>("neutral");
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Store debug callback in ref to maintain a 100% stable analyzeEmotion reference
@@ -211,7 +211,7 @@ export function useAvatarController({
     } else if (typeof emotion === "string") {
       setEmotionId(emotion);
     } else {
-      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "happy_gentle");
+      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "neutral");
     }
   }, []);
 
@@ -221,11 +221,10 @@ export function useAvatarController({
       text: string,
       bypassChunkSizeGate: boolean = false,
     ): Promise<string> => {
-      if (!text.trim()) return "happy_gentle";
+      if (!text.trim()) return "neutral";
 
       try {
         const signals = await processAndClassify(text, bypassChunkSizeGate);
-        console.log("signals coming from model:", signals);
         let state: string;
         if (signals?.modelEmotion) {
           state = signals.modelEmotion;
@@ -260,7 +259,7 @@ export function useAvatarController({
     } else if (isListening) {
       setEmotionId("listening");
     } else {
-      setEmotionId("happy_gentle");
+      setEmotionId("neutral");
     }
   }, [isSpeaking, isListening]);
 

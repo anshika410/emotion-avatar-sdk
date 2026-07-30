@@ -32,7 +32,7 @@ test("Emotion Mapping - All 61 detected emotions & synonyms map correctly", () =
     relief: "happy_gentle",
     pleased: "happy_gentle",
     content: "happy_gentle",
-    neutral: "happy_gentle",
+    neutral: "neutral",
 
     // Thinking
     confusion: "thinking",
@@ -92,10 +92,10 @@ test("Emotion Mapping - All 61 detected emotions & synonyms map correctly", () =
   }
 });
 
-test("Emotion Mapping - Fallback to happy_gentle for unrecognised emotions", () => {
+test("Emotion Mapping - Fallback to neutral for unrecognised emotions", () => {
   const unrecognised = ["unknown_emotion", "xyz_123", "", "   ", "random_string"];
   for (const emotion of unrecognised) {
     const actual = resolveBaseMascotKey(emotion);
-    assert.equal(actual, "happy_gentle", `Expected '${emotion}' to fall back to 'happy_gentle', got '${actual}'`);
+    assert.equal(actual, "neutral", `Expected '${emotion}' to fall back to 'neutral', got '${actual}'`);
   }
 });

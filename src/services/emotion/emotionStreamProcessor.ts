@@ -58,7 +58,7 @@ import type { EmotionLabel } from "../../types/emotion";
 /** Flip on only for local debugging — these log full score distributions
  * (JSON.stringify of up to 28 labels) on every call, which is itself a
  * measurable source of lag if left on in a live stream. */
-const DEBUG_LOGGING = true;
+const DEBUG_LOGGING = false;
 
 /**
  * predictTopK slices its sorted result to this many entries. We want the
@@ -156,7 +156,7 @@ const NEGATION_SCOPE_WINDOW = 3;
  */
 const EMOTION_LABEL_POLARITY: Record<string, number> = {
   admiration: 1, amusement: 1, anger: -1, annoyance: -1, approval: 1,
-  caring: 1,  desire: 1, disappointment: -1, disapproval: -1,
+  caring: 1, desire: 1, disappointment: -1, disapproval: -1,
   disgust: -1, embarrassment: -1, excitement: 1, fear: -1, gratitude: 1,
   grief: -1, joy: 1, love: 1, nervousness: -1, optimism: 1, pride: 1,
   relief: 1, remorse: -1, sadness: -1, confusion: 0, curiosity: 0, realization: 0, surprise: 0
@@ -339,8 +339,8 @@ function applyLexicalCorrection(
       polarity === 0
         ? score
         : polarity === valenceSign
-        ? score 
-        : score * (1 - LEXICAL_CORRECTION_STRENGTH * magnitude);
+          ? score
+          : score * (1 - LEXICAL_CORRECTION_STRENGTH * magnitude);
     corrected[label] = Math.max(0, Math.min(1, adjusted));
   }
   return corrected;
@@ -518,7 +518,7 @@ function markSegmentChunkSent(sentText: string): void {
 // ──────────────────── Rolling average + threshold logic ────────────────────
 
 /** Number of past predictions for taking average */
-const SMOOTHING_WINDOW = 5;
+const SMOOTHING_WINDOW = 3;
 
 /**
  * Minimum gap between top two smoothed emotions to allow a switch.
@@ -1060,10 +1060,13 @@ export async function processAndClassify(
   const analysisStartMs = performance.now();
   const base = extractTextSignals(transcript);
   const explanation = buildEmotionExplanation(lastTranscript, transcript);
+  if (lastTranscript && !transcript.startsWith(lastTranscript)) {
+    resetEmotionProcessing();
+  }
   lastTranscript = transcript;
   const candidateChunks = decideChunksToFlush(transcript);
   if (DEBUG_LOGGING) { console.log(`Transcript: "${transcript}"`) }
- 
+
   // Decide which candidates actually get sent to the model this turn.
   // `segmentComplete` chunks always go. A still-growing tail chunk only
   // goes once enough NEW text has accumulated since this segment was last
@@ -1142,7 +1145,7 @@ export async function processAndClassify(
     smoothedScores = getSmoothedScores(correctedScores);
 
     if (DEBUG_LOGGING) {
-      console.log(`[emotion] chunk="${chunk.text}" cache=${fromCache}\nraw=`, rawScores,"\ncorrected=", correctedScores);
+      console.log(`[emotion] chunk="${chunk.text}" cache=${fromCache}\nraw=`, rawScores, "\ncorrected=", correctedScores);
       console.log(`Emotion Buffer:\n${JSON.stringify(getTopN(smoothedScores, 5))}`)
     }
   }
