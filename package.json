@@ -1,6 +1,6 @@
 {
   "name": "emotion-avatar-sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Real-time animated avatar SDK with emotion detection and avatar rendering",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -27,7 +27,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "@huggingface/transformers": "^3.8.1",
+    "@huggingface/transformers": "^4.2.0",
     "onnxruntime-web": "^1.27.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

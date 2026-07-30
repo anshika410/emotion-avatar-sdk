@@ -36,13 +36,16 @@
  * ---------------------------------------------------------------------------
  */
 
-import { AutoTokenizer, type PreTrainedTokenizer } from "@huggingface/transformers";
+import {
+  AutoTokenizer,
+  type PreTrainedTokenizer,
+} from "@huggingface/transformers";
 import * as ort from "onnxruntime-web";
 
-// Ensure onnxruntime-web fetches valid WASM binaries from CDN instead of failing on local HTML 404
-if (typeof window !== "undefined" && ort && ort.env && ort.env.wasm) {
-  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
-}
+// // Ensure onnxruntime-web fetches valid WASM binaries from CDN instead of failing on local HTML 404
+// if (typeof window !== "undefined" && ort && ort.env && ort.env.wasm) {
+//   ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+// }
 
 export interface EmotionPrediction {
   label: string;
@@ -147,7 +150,7 @@ interface TensorLike {
 
 function toBigInt64Tensor(t: TensorLike): ort.Tensor {
   const flat = Array.from(t.data as ArrayLike<number | bigint>).map((v) =>
-    typeof v === "bigint" ? v : BigInt(Math.trunc(v))
+    typeof v === "bigint" ? v : BigInt(Math.trunc(v)),
   );
   return new ort.Tensor("int64", BigInt64Array.from(flat), t.dims);
 }
@@ -198,7 +201,10 @@ class InferenceScheduler {
   private queue: QueuedTask<unknown>[] = [];
   private active = 0;
 
-  constructor(private maxConcurrent: number, private maxQueueDepth: number) {}
+  constructor(
+    private maxConcurrent: number,
+    private maxQueueDepth: number,
+  ) {}
 
   get pending(): number {
     return this.queue.length + this.active;
@@ -208,7 +214,11 @@ class InferenceScheduler {
     return new Promise<T>((resolve, reject) => {
       if (this.queue.length >= this.maxQueueDepth) {
         const stale = this.queue.shift();
-        stale?.reject(new Error("SUPERSEDED: dropped from inference queue (backlog too deep)"));
+        stale?.reject(
+          new Error(
+            "SUPERSEDED: dropped from inference queue (backlog too deep)",
+          ),
+        );
       }
       this.queue.push({ run: task, resolve, reject } as QueuedTask<unknown>);
       this.drain();
@@ -271,14 +281,16 @@ export class ONNXEmotionModel {
 
     this.scheduler = new InferenceScheduler(
       options.maxConcurrentInference ?? DEFAULT_MAX_CONCURRENT,
-      options.maxQueueDepth ?? DEFAULT_MAX_QUEUE_DEPTH
+      options.maxQueueDepth ?? DEFAULT_MAX_QUEUE_DEPTH,
     );
     this.cache = new LRUCache(options.cacheSize ?? DEFAULT_CACHE_SIZE);
     this.statsWindow = options.statsWindow ?? DEFAULT_STATS_WINDOW;
 
     // --- perf: configure the wasm backend before any session is created ---
     const defaultThreads =
-      typeof navigator !== "undefined" ? Math.min(navigator.hardwareConcurrency || 4, 4) : 4;
+      typeof navigator !== "undefined"
+        ? Math.min(navigator.hardwareConcurrency || 4, 4)
+        : 4;
     ort.env.wasm.numThreads = options.numThreads ?? defaultThreads;
     ort.env.wasm.simd = true;
     // Keeps inference off the main/UI thread so a live transcript view never
@@ -290,7 +302,9 @@ export class ONNXEmotionModel {
     }
   }
 
-  static async create(options: ONNXEmotionModelOptions = {}): Promise<ONNXEmotionModel> {
+  static async create(
+    options: ONNXEmotionModelOptions = {},
+  ): Promise<ONNXEmotionModel> {
     const model = new ONNXEmotionModel(options);
     await model.init();
     await model.warmUp();
@@ -300,7 +314,9 @@ export class ONNXEmotionModel {
   /** Loads the tokenizer, both ONNX sessions, and thresholds.json. Safe to call multiple times. */
   async init(): Promise<void> {
     if (this.disposed) {
-      throw new Error("ONNXEmotionModel has been disposed; create a new instance.");
+      throw new Error(
+        "ONNXEmotionModel has been disposed; create a new instance.",
+      );
     }
     if (this.initialized) return;
     if (this.initPromise) return this.initPromise;
@@ -309,7 +325,7 @@ export class ONNXEmotionModel {
       const startMs = now();
 
       this.tokenizer = (await AutoTokenizer.from_pretrained(
-        this.repoId
+        this.repoId,
       )) as PreTrainedTokenizer;
 
       const [encoderBuf, classifierBuf, thresholdsJson] = await Promise.all([
@@ -336,7 +352,9 @@ export class ONNXEmotionModel {
       this.emotionLabels = Array.from(this.classifierSession.outputNames);
 
       this.initialized = true;
-      console.log(`[ONNXEmotionModel] Sessions loaded in ${(now() - startMs).toFixed(0)}ms`);
+      console.log(
+        `[ONNXEmotionModel] Sessions loaded in ${(now() - startMs).toFixed(0)}ms`,
+      );
     })();
 
     return this.initPromise;
@@ -349,9 +367,13 @@ export class ONNXEmotionModel {
    * one-time cost (often hundreds of ms) that will blow any latency budget
    * and can visibly stall the first caption.
    */
-  async warmUp(sampleText = "This is a warm up sentence to initialize the model."): Promise<void> {
+  async warmUp(
+    sampleText = "This is a warm up sentence to initialize the model.",
+  ): Promise<void> {
     if (this.disposed) {
-      throw new Error("ONNXEmotionModel has been disposed; create a new instance.");
+      throw new Error(
+        "ONNXEmotionModel has been disposed; create a new instance.",
+      );
     }
     if (!this.initialized) await this.init();
     if (this.warmedUp) return;
@@ -365,7 +387,9 @@ export class ONNXEmotionModel {
     this.resetStats();
     this.cache.clear();
 
-    console.log(`[ONNXEmotionModel] Warm-up complete in ${(now() - startMs).toFixed(0)}ms`);
+    console.log(
+      `[ONNXEmotionModel] Warm-up complete in ${(now() - startMs).toFixed(0)}ms`,
+    );
   }
 
   /** True once the model is loaded, warmed up, and not disposed. */
@@ -381,10 +405,16 @@ export class ONNXEmotionModel {
     this.scheduler.clear("ONNXEmotionModel disposed");
 
     const releasers: Promise<void>[] = [];
-    if (this.encoderSession && typeof this.encoderSession.release === "function") {
+    if (
+      this.encoderSession &&
+      typeof this.encoderSession.release === "function"
+    ) {
       releasers.push(this.encoderSession.release());
     }
-    if (this.classifierSession && typeof this.classifierSession.release === "function") {
+    if (
+      this.classifierSession &&
+      typeof this.classifierSession.release === "function"
+    ) {
       releasers.push(this.classifierSession.release());
     }
     await Promise.all(releasers);
@@ -402,11 +432,21 @@ export class ONNXEmotionModel {
   getStats(): InferenceStats {
     const n = this.latencies.length;
     if (n === 0) {
-      return { count: 0, avgMs: 0, p50Ms: 0, p95Ms: 0, minMs: 0, maxMs: 0, lastMs: 0, pending: this.scheduler.pending };
+      return {
+        count: 0,
+        avgMs: 0,
+        p50Ms: 0,
+        p95Ms: 0,
+        minMs: 0,
+        maxMs: 0,
+        lastMs: 0,
+        pending: this.scheduler.pending,
+      };
     }
     const sorted = [...this.latencies].sort((a, b) => a - b);
     const sum = sorted.reduce((a, b) => a + b, 0);
-    const pct = (p: number) => sorted[Math.min(n - 1, Math.floor((p / 100) * n))];
+    const pct = (p: number) =>
+      sorted[Math.min(n - 1, Math.floor((p / 100) * n))];
     return {
       count: n,
       avgMs: sum / n,
@@ -435,7 +475,9 @@ export class ONNXEmotionModel {
   private async fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+      throw new Error(
+        `Failed to fetch ${url}: ${res.status} ${res.statusText}`,
+      );
     }
     return res.arrayBuffer();
   }
@@ -443,14 +485,16 @@ export class ONNXEmotionModel {
   private async fetchJson(url: string): Promise<unknown> {
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+      throw new Error(
+        `Failed to fetch ${url}: ${res.status} ${res.statusText}`,
+      );
     }
     return res.json();
   }
 
   /** Tokenize and return a normalised sentence embedding (batch=1 x hidden). */
   private async meanPoolEmbedding(
-    text: string
+    text: string,
   ): Promise<{ data: Float32Array; hidden: number }> {
     const encoded = await this.tokenizer(text, {
       padding: true,
@@ -469,7 +513,7 @@ export class ONNXEmotionModel {
 
     if ("token_type_ids" in encoded && encoded.token_type_ids) {
       feeds.token_type_ids = toBigInt64Tensor(
-        encoded.token_type_ids as unknown as TensorLike
+        encoded.token_type_ids as unknown as TensorLike,
       );
     }
 
@@ -480,12 +524,12 @@ export class ONNXEmotionModel {
     const [batch, seq, hidden] = tokenEmbeds.dims as number[];
     const embedData = tokenEmbeds.data as Float32Array;
     const maskFlat = Array.from(
-      attentionMask.data as ArrayLike<number | bigint>
+      attentionMask.data as ArrayLike<number | bigint>,
     ).map((v) => Number(v));
 
     if (batch !== 1) {
       throw new Error(
-        `Expected batch size 1, got ${batch}. Batch prediction is not supported.`
+        `Expected batch size 1, got ${batch}. Batch prediction is not supported.`,
       );
     }
 
@@ -517,7 +561,7 @@ export class ONNXEmotionModel {
   private async runInference(
     text: string,
     k: number,
-    applyThreshold: boolean
+    applyThreshold: boolean,
   ): Promise<EmotionPrediction[]> {
     const { data: embedding, hidden } = await this.meanPoolEmbedding(text);
 
@@ -537,7 +581,7 @@ export class ONNXEmotionModel {
 
     if (applyThreshold) {
       preds = preds.filter(
-        (p) => p.probability >= (this.thresholds[p.label] ?? 0.5)
+        (p) => p.probability >= (this.thresholds[p.label] ?? 0.5),
       );
     }
 
@@ -558,10 +602,12 @@ export class ONNXEmotionModel {
   async predictTopK(
     text: string,
     k = 3,
-    applyThreshold = false
+    applyThreshold = false,
   ): Promise<EmotionPrediction[]> {
     if (this.disposed) {
-      throw new Error("ONNXEmotionModel has been disposed; create a new instance.");
+      throw new Error(
+        "ONNXEmotionModel has been disposed; create a new instance.",
+      );
     }
     if (!this.initialized) {
       await this.init();
@@ -573,7 +619,7 @@ export class ONNXEmotionModel {
 
     const startMs = now();
     const result = await this.scheduler.schedule(() =>
-      this.runInference(text, k, applyThreshold)
+      this.runInference(text, k, applyThreshold),
     );
     this.recordLatency(now() - startMs);
 
@@ -594,7 +640,7 @@ let defaultPredictor: ONNXEmotionModel | null = null;
 export async function predictTopK(
   text: string,
   k = 3,
-  model?: ONNXEmotionModel | ONNXEmotionModelOptions
+  model?: ONNXEmotionModel | ONNXEmotionModelOptions,
 ): Promise<EmotionPrediction[]> {
   let predictor: ONNXEmotionModel;
 
@@ -614,7 +660,7 @@ export async function predictTopK(
 
 /** Loads + warms up the shared default model. Call this once at app startup. */
 export async function warmUpEmotionModel(
-  options?: ONNXEmotionModelOptions
+  options?: ONNXEmotionModelOptions,
 ): Promise<void> {
   if (!defaultPredictor) {
     defaultPredictor = new ONNXEmotionModel(options);

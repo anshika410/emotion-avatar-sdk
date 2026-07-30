@@ -1,7 +1,10 @@
 // emotion-sdk-v0.1.2\src\components\AnimatedAvatar.tsx
 import { useEffect, useRef } from "react";
 import { AvatarRenderer } from "./AvatarRenderer";
-import { useAvatarController, type EmotionDebugInfo } from "../hooks/useAvatarController";
+import {
+  useAvatarController,
+  type EmotionDebugInfo,
+} from "../hooks/useAvatarController";
 import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
 
 export interface AnimatedAvatarProps {
@@ -33,18 +36,16 @@ export function AnimatedAvatar({
   avatarClassName,
   style,
 }: AnimatedAvatarProps) {
-  const {
-    emotionId,
-    setEmotion,
-    analyzeEmotion,
-    isInitialized,
-  } = useAvatarController({
-    isSpeaking,
-    isListening,
-    onEmotionDebug,
-  });
+  const { emotionId, setEmotion, analyzeEmotion, isInitialized } =
+    useAvatarController({
+      isSpeaking,
+      isListening,
+      onEmotionDebug,
+    });
 
-  const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,7 +92,8 @@ export function AnimatedAvatar({
       analyzeEmotion(userMessageInterim, true).then((detected: string) => {
         if (detected) setEmotion(detected);
 
-        if (interimResetTimeout.current) clearTimeout(interimResetTimeout.current);
+        if (interimResetTimeout.current)
+          clearTimeout(interimResetTimeout.current);
         interimResetTimeout.current = setTimeout(() => {
           resetEmotionProcessing();
           setEmotion("happy_gentle"); // Return to neutral emotion after long pause
@@ -115,7 +117,12 @@ export function AnimatedAvatar({
 
     const processFinalEmotion = async () => {
       const detected = await analyzeEmotion(userMessageFinal, true);
-
+      console.log(
+        "this emotion got detected by model",
+        userMessageFinal,
+        ":",
+        detected,
+      );
       // Display the detected emotion
       setEmotion(detected);
 
