@@ -4,195 +4,157 @@ const getAssetUrl = (filename: string): string => {
 
 /** Source of Truth mapping: Base mascot asset names */
 export type BaseMascotKey =
-  | "Love-Strong"
+  | "love-strong"
   | "gentle-love"
-  | "happy_strong"
-  | "happy_gentle"
+  | "happy-strong"
+  | "happy-gentle"
   | "thinking"
   | "surprise"
   | "anger"
   | "disgust"
   | "fear"
-  | "sad-Strong"
+  | "sad-strong"
   | "celebration"
   | "sad-gentle"
   | "shoked"
-  | "neutral";
-
-/** Source of Truth mapping from 28 model emotions and synonyms to base mascots */
-export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
-  // Love-Strong
-  love: "Love-Strong",
-  love_strong: "Love-Strong",
-  heartfelt: "Love-Strong",
-
-  // gentle-love
-  caring: "gentle-love",
-  admiration: "gentle-love",
-  gratitude: "gentle-love",
-  love_gentle: "gentle-love",
-  affection: "gentle-love",
-  desire: "gentle-love",
-
-  // happy_strong
-  joy: "happy_strong",
-  amusement: "happy_strong",
-  excitement: "happy_strong",
-  pride: "happy_strong",
-  happiness: "happy_strong",
-  happy: "happy_strong",
-  celebration: "celebration",
-  excited: "happy_strong",
-  thrilled: "happy_strong",
-
-  // happy_gentle
-  approval: "happy_gentle",
-  optimism: "happy_gentle",
-  relief: "happy_gentle",
-  pleased: "happy_gentle",
-  content: "happy_gentle",
-
-  // neutral
-  neutral: "neutral",
-
-  // thinking
-  curiosity: "thinking",
-  realization: "thinking",
-  confusion: "thinking",
-  confused: "thinking",
-  thinking: "thinking",
-  curious: "thinking",
-
-  // surprise
-  surprise: "surprise",
-  surprised: "surprise",
-  astonished: "surprise",
-  amazed: "surprise",
-
-  // anger
-  anger: "anger",
-  annoyance: "anger",
-  angry: "anger",
-  annoyed: "anger",
-  frustration: "anger",
-  frustrated: "anger",
-  furious: "anger",
-
-  // disgust
-  disgust: "disgust",
-  disapproval: "disgust",
-  disgusted: "disgust",
-
-  // fear
-  fear: "fear",
-  nervousness: "fear",
-  anxiety: "fear",
-  terrified: "fear",
-  scared: "fear",
-  fearful: "fear",
-  nervous: "fear",
-  panicked: "fear",
-
-  // sad-Strong
-  sadness: "sad-Strong",
-  grief: "sad-Strong",
-  disappointment: "sad-Strong",
-  remorse: "sad-Strong",
-  embarrassment: "sad-Strong",
-  sad: "sad-Strong",
-  disappointed: "sad-Strong",
-  remorseful: "sad-Strong",
-  embarrassed: "sad-Strong",
-  grieving: "sad-Strong",
-  shame: "sad-Strong",
-};
+  | "speaking-happy"
+  | "speaking-neutral"
+  | "neutral"
+  | "speaking-sad";
 
 /** WebP image URLs for base mascots resolved via standard ESM URL constructor */
 export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
-  "Love-Strong": getAssetUrl("Love-Strong.webp"),
+  "love-strong": getAssetUrl("love-strong.webp"),
   "gentle-love": getAssetUrl("gentle-love.webp"),
-  happy_strong: getAssetUrl("happy_strong.webp"),
-  happy_gentle: getAssetUrl("happy_gentle.webp"),
+  "happy-strong": getAssetUrl("happy-strong.webp"),
+  "happy-gentle": getAssetUrl("happy-gentle.webp"),
   thinking: getAssetUrl("thinking.webp"),
   surprise: getAssetUrl("surprise.webp"),
   anger: getAssetUrl("anger.webp"),
   disgust: getAssetUrl("disgust.webp"),
   fear: getAssetUrl("fear.webp"),
-  "sad-Strong": getAssetUrl("sad-Strong.webp"),
+  "sad-strong": getAssetUrl("sad-strong.webp"),
   // Additional assets for specific legacy/extended lookups
   "sad-gentle": getAssetUrl("sad-gentle.webp"),
   celebration: getAssetUrl("celebration.webp"),
   shoked: getAssetUrl("shoked.webp"),
-  neutral: getAssetUrl("nuetral.webp"),
+  "speaking-happy": getAssetUrl("speaking-happy.webp"),
+  "speaking-neutral": getAssetUrl("speaking-neutral.webp"),
+  "speaking-sad": getAssetUrl("speaking-sad.webp"),
+  neutral: getAssetUrl("neutral.webp"),
 };
 
-const NORMALIZED_BASE_MASCOT_KEYS = Object.fromEntries(
-  (Object.keys(BASE_MASCOT_ASSETS) as BaseMascotKey[]).map((key) => [
-    key.toLowerCase(),
-    key,
-  ]),
-) as Record<string, BaseMascotKey>;
-  
 /** Dedicated speaking assets resolved via standard ESM URL constructor */
 export const SPEAKING_ASSETS = {
-  speaking_happy: getAssetUrl("speaking_happy.webp"),
-  speaking_neutral: getAssetUrl("speaking_neutral.webp"),
-  "sad-speaking_gentle": getAssetUrl("sad-speaking_gentle.webp"),
+  "speaking-happy": getAssetUrl("speaking-happy.webp"),
+  "speaking-neutral": getAssetUrl("speaking-neutral.webp"),
+  "speaking-sad": getAssetUrl("speaking-sad.webp"),
   // Fallback for strong sadness when dedicated strong speaking asset is not present
-  "sad-speaking_strong": getAssetUrl("sad-speaking_gentle.webp"),
+  "sad-speaking-strong": getAssetUrl("speaking-sad.webp"),
 };
 
 /** Maps each of the 28 model emotions to its designated speaking asset */
 export const MODEL_EMOTION_TO_SPEAKING_ASSET: Record<string, string> = {
   // Happy emotions -> speaking_happy.webp
-  joy: SPEAKING_ASSETS.speaking_happy,
-  amusement: SPEAKING_ASSETS.speaking_happy,
-  excitement: SPEAKING_ASSETS.speaking_happy,
-  pride: SPEAKING_ASSETS.speaking_happy,
-  approval: SPEAKING_ASSETS.speaking_happy,
-  optimism: SPEAKING_ASSETS.speaking_happy,
-  relief: SPEAKING_ASSETS.speaking_happy,
-  happiness: SPEAKING_ASSETS.speaking_happy,
-  happy: SPEAKING_ASSETS.speaking_happy,
+  joy: SPEAKING_ASSETS["speaking-happy"],
+  amusement: SPEAKING_ASSETS["speaking-happy"],
+  excitement: SPEAKING_ASSETS["speaking-happy"],
+  pride: SPEAKING_ASSETS["speaking-happy"],
+  approval: SPEAKING_ASSETS["speaking-happy"],
+  optimism: SPEAKING_ASSETS["speaking-happy"],
+  relief: SPEAKING_ASSETS["speaking-happy"],
+  happiness: SPEAKING_ASSETS["speaking-happy"],
+  happy: SPEAKING_ASSETS["speaking-happy"],
 
   // Neutral / Thinking emotions -> speaking_neutral.webp
-  neutral: SPEAKING_ASSETS.speaking_neutral,
-  curiosity: SPEAKING_ASSETS.speaking_neutral,
-  realization: SPEAKING_ASSETS.speaking_neutral,
-  confusion: SPEAKING_ASSETS.speaking_neutral,
+  neutral: SPEAKING_ASSETS["speaking-neutral"],
+  curiosity: SPEAKING_ASSETS["speaking-neutral"],
+  realization: SPEAKING_ASSETS["speaking-neutral"],
+  confusion: SPEAKING_ASSETS["speaking-neutral"],
 
   // Gentle sadness -> sad-speaking_gentle.webp
-  disappointment: SPEAKING_ASSETS["sad-speaking_gentle"],
-  remorse: SPEAKING_ASSETS["sad-speaking_gentle"],
-  embarrassment: SPEAKING_ASSETS["sad-speaking_gentle"],
+  disappointment: SPEAKING_ASSETS["speaking-sad"],
+  remorse: SPEAKING_ASSETS["speaking-sad"],
+  embarrassment: SPEAKING_ASSETS["speaking-sad"],
 
   // Strong sadness -> sad-speaking_strong.webp (with fallback)
-  sadness: SPEAKING_ASSETS["sad-speaking_strong"],
-  grief: SPEAKING_ASSETS["sad-speaking_strong"],
+  sadness: SPEAKING_ASSETS["sad-speaking-strong"],
+  grief: SPEAKING_ASSETS["sad-speaking-strong"],
 
   // Love emotions -> natural fallback: speaking_happy.webp
-  love: SPEAKING_ASSETS.speaking_happy,
-  desire: SPEAKING_ASSETS.speaking_happy,
-  caring: SPEAKING_ASSETS.speaking_happy,
-  admiration: SPEAKING_ASSETS.speaking_happy,
-  gratitude: SPEAKING_ASSETS.speaking_happy,
+  love: SPEAKING_ASSETS["speaking-happy"],
+  desire: SPEAKING_ASSETS["speaking-happy"],
+  caring: SPEAKING_ASSETS["speaking-happy"],
+  admiration: SPEAKING_ASSETS["speaking-happy"],
+  gratitude: SPEAKING_ASSETS["speaking-happy"],
 
   // Anger emotions -> natural fallback: speaking_neutral.webp
-  anger: SPEAKING_ASSETS.speaking_neutral,
-  annoyance: SPEAKING_ASSETS.speaking_neutral,
+  anger: SPEAKING_ASSETS["speaking-neutral"],
+  annoyance: SPEAKING_ASSETS["speaking-neutral"],
 
   // Disgust emotions -> natural fallback: speaking_neutral.webp
-  disgust: SPEAKING_ASSETS.speaking_neutral,
-  disapproval: SPEAKING_ASSETS.speaking_neutral,
+  disgust: SPEAKING_ASSETS["speaking-neutral"],
+  disapproval: SPEAKING_ASSETS["speaking-neutral"],
 
   // Fear emotions -> natural fallback: speaking_neutral.webp
-  fear: SPEAKING_ASSETS.speaking_neutral,
-  nervousness: SPEAKING_ASSETS.speaking_neutral,
-  anxiety: SPEAKING_ASSETS.speaking_neutral,
-  terrified: SPEAKING_ASSETS.speaking_neutral,
+  fear: SPEAKING_ASSETS["speaking-neutral"],
+  nervousness: SPEAKING_ASSETS["speaking-neutral"],
+  anxiety: SPEAKING_ASSETS["speaking-neutral"],
+  terrified: SPEAKING_ASSETS["speaking-neutral"],
 
   // Surprise -> natural fallback: speaking_happy.webp
-  surprise: SPEAKING_ASSETS.speaking_happy,
+  surprise: SPEAKING_ASSETS["speaking-happy"],
+};
+
+export const MODEL_EMOTIONS_MAP_WITH_BASE_MASCOT_EMOTIONS: Record<
+  string,
+  BaseMascotKey
+> = {
+  // High-energy positive
+  curiosity: "thinking",
+  excitement: "happy-strong",
+  joy: "happy-strong",
+  pride: "happy-strong",
+  amusement: "happy-strong",
+
+  // Gentle positive
+  admiration: "happy-gentle",
+  approval: "happy-gentle",
+  optimism: "happy-gentle",
+  relief: "happy-gentle",
+  gratitude: "happy-gentle",
+
+  // Love / affection
+  love: "love-strong",
+  caring: "gentle-love",
+  desire: "gentle-love",
+
+  // Neutral / cognitive
+  neutral: "neutral",
+  confusion: "thinking",
+  realization: "surprise",
+
+  // Surprise
+  surprise: "surprise",
+
+  // Anger family
+  anger: "anger",
+  annoyance: "anger",
+  disapproval: "disgust",
+
+  // Disgust
+  disgust: "disgust",
+
+  // Fear
+  fear: "fear",
+  nervousness: "fear",
+  embarrassment: "fear",
+
+  // Sadness family
+  sadness: "sad-gentle",
+  disappointment: "sad-gentle",
+  grief: "sad-strong",
+  remorse: "sad-strong",
 };
 
 /** Alias / legacy reaction ID mappings to model emotion keys */
@@ -257,23 +219,10 @@ export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
   if (!emotionInput) return "neutral";
 
   const normalized = emotionInput.trim().toLowerCase();
+  if (!normalized) return "neutral";
 
-  // 1. Direct match with a 28 model emotion or synonym
-  if (normalized in MODEL_EMOTION_TO_BASE_MASCOT) {
-    return MODEL_EMOTION_TO_BASE_MASCOT[normalized];
-  }
-
-  // 2. Direct match with a base mascot key
-  const directBaseKey = NORMALIZED_BASE_MASCOT_KEYS[normalized];
-  if (directBaseKey) {
-    return directBaseKey;
-  }
-
-  // 3. Match via legacy alias
-  const legacyMatch = NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION[normalized];
-  if (legacyMatch && legacyMatch.toLowerCase() in MODEL_EMOTION_TO_BASE_MASCOT) {
-    return MODEL_EMOTION_TO_BASE_MASCOT[legacyMatch.toLowerCase()];
-  }
+  const mascotKey = MODEL_EMOTIONS_MAP_WITH_BASE_MASCOT_EMOTIONS[normalized];
+  if (mascotKey) return mascotKey;
 
   // Default fallback for unrecognized emotions
   return "neutral";
@@ -284,7 +233,9 @@ export function getMascotAssetUrl(
   emotionInput: string,
   isSpeaking: boolean = false,
 ): string {
-  const normalized = emotionInput ? emotionInput.trim().toLowerCase() : "neutral";
+  const normalized = emotionInput
+    ? emotionInput.trim().toLowerCase()
+    : "neutral";
 
   if (isSpeaking) {
     // Check direct model emotion speaking asset
@@ -294,37 +245,39 @@ export function getMascotAssetUrl(
 
     // Check legacy ID resolved to model emotion
     const legacyEmotion = NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION[normalized];
-    if (legacyEmotion && legacyEmotion.toLowerCase() in MODEL_EMOTION_TO_SPEAKING_ASSET) {
+    if (
+      legacyEmotion &&
+      legacyEmotion.toLowerCase() in MODEL_EMOTION_TO_SPEAKING_ASSET
+    ) {
       return MODEL_EMOTION_TO_SPEAKING_ASSET[legacyEmotion.toLowerCase()];
     }
 
     // Check base mascot key to default speaking asset
     const baseKey = resolveBaseMascotKey(normalized);
     switch (baseKey) {
-      case "happy_strong":
-      case "happy_gentle":
-      case "Love-Strong":
+      case "happy-strong":
+      case "happy-gentle":
+      case "love-strong":
       case "gentle-love":
       case "surprise":
       case "celebration":
-        return SPEAKING_ASSETS.speaking_happy;
+        return SPEAKING_ASSETS["speaking-happy"];
 
-      case "sad-Strong":
+      case "sad-strong":
       case "sad-gentle":
-        return SPEAKING_ASSETS["sad-speaking_gentle"];
+        return SPEAKING_ASSETS["speaking-sad"];
 
       case "thinking":
       case "anger":
       case "disgust":
       case "fear":
       case "shoked":
-      case "neutral":
       default:
-        return SPEAKING_ASSETS.speaking_neutral;
+        return SPEAKING_ASSETS["speaking-neutral"];
     }
   }
 
   // Idle state: resolve base mascot WebP asset
   const baseKey = resolveBaseMascotKey(normalized);
-  return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS.neutral;
+  return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS["neutral"];
 }

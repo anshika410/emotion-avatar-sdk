@@ -3,7 +3,6 @@ export { AnimatedAvatar } from "./components/AnimatedAvatar";
 export { AvatarRenderer } from "./components/AvatarRenderer";
 
 export {
-  MODEL_EMOTION_TO_BASE_MASCOT,
   MODEL_EMOTION_TO_SPEAKING_ASSET,
   BASE_MASCOT_ASSETS,
   SPEAKING_ASSETS,
@@ -12,14 +11,8 @@ export {
 } from "./constants/emotionAssets";
 
 // Types
-export type {
-  AnimatedAvatarProps,
-} from "./components/AnimatedAvatar";
+export type { AnimatedAvatarProps } from "./components/AnimatedAvatar";
 
-export type {
-  AvatarRendererProps,
-} from "./components/AvatarRenderer";
+export type { AvatarRendererProps } from "./components/AvatarRenderer";
 
-export type {
-  EmotionDebugInfo,
-} from "./hooks/useAvatarController";
+export type { EmotionDebugInfo } from "./hooks/useAvatarController";

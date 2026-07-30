@@ -8,14 +8,14 @@ export default defineConfig({
   plugins: [
     react(),
     dts({ include: ["src/**/*"], outDir: "dist", rollupTypes: true }),
-    viteStaticCopy({
-      targets: [
-        {
-          src: "src/assets/*.webp",
-          dest: ".",
-        },
-      ],
-    }),
+    // viteStaticCopy({
+    //   targets: [
+    //     {
+    //       src: "src/assets/*.webp",
+    //       dest: ".",
+    //     },
+    //   ],
+    // }),
   ],
   build: {
     lib: {
@@ -25,7 +25,12 @@ export default defineConfig({
       fileName: (format) => `index.${format === "es" ? "js" : "cjs"}`,
     },
     rollupOptions: {
-      external: ["react", "react-dom", "@huggingface/transformers", "onnxruntime-web"],
+      external: [
+        "react",
+        "react-dom",
+        "@huggingface/transformers",
+        "onnxruntime-web",
+      ],
       output: { globals: { react: "React", "react-dom": "ReactDOM" } },
     },
     copyPublicDir: false,
