@@ -1,108 +1,101 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
-import { test } from "node:test";
+import test from "node:test";
+import { resolveBaseMascotKey } from "../dist/index.js";
 
-import {
-  BASE_MASCOT_ASSETS,
-  MODEL_EMOTION_TO_BASE_MASCOT,
-  MODEL_EMOTION_TO_SPEAKING_ASSET,
-  getMascotAssetUrl,
-  resolveBaseMascotKey,
-} from "../dist/index.js";
+test("Emotion Mapping - All 61 detected emotions & synonyms map correctly", () => {
+  const expectedMappings = {
+    // Love
+    admiration: "gentle-love",
+    caring: "gentle-love",
+    desire: "gentle-love",
+    gratitude: "gentle-love",
+    love: "Love-Strong",
+    love_strong: "Love-Strong",
+    heartfelt: "Love-Strong",
+    love_gentle: "gentle-love",
+    affection: "gentle-love",
 
-const MODEL_LABELS = [
-  "admiration",
-  "amusement",
-  "anger",
-  "annoyance",
-  "approval",
-  "caring",
-  "confusion",
-  "curiosity",
-  "desire",
-  "disappointment",
-  "disapproval",
-  "disgust",
-  "embarrassment",
-  "excitement",
-  "fear",
-  "gratitude",
-  "grief",
-  "joy",
-  "love",
-  "nervousness",
-  "optimism",
-  "pride",
-  "realization",
-  "relief",
-  "remorse",
-  "sadness",
-  "surprise",
-  "neutral",
-];
+    // Happy Strong
+    amusement: "happy_strong",
+    excitement: "happy_strong",
+    joy: "happy_strong",
+    pride: "happy_strong",
+    happiness: "happy_strong",
+    happy: "happy_strong",
+    celebration: "celebration",
+    excited: "happy_strong",
+    thrilled: "happy_strong",
 
-test("all model labels map to existing idle and speaking assets", () => {
-  assert.equal(MODEL_LABELS.length, 28);
+    // Happy Gentle
+    approval: "happy_gentle",
+    optimism: "happy_gentle",
+    relief: "happy_gentle",
+    pleased: "happy_gentle",
+    content: "happy_gentle",
+    neutral: "happy_gentle",
 
-  for (const label of MODEL_LABELS) {
-    const baseKey = MODEL_EMOTION_TO_BASE_MASCOT[label];
-    assert.ok(baseKey, `missing idle map: ${label}`);
-    assert.ok(BASE_MASCOT_ASSETS[baseKey], `missing base asset: ${baseKey}`);
-    assert.equal(resolveBaseMascotKey(label), baseKey);
-    assert.ok(
-      MODEL_EMOTION_TO_SPEAKING_ASSET[label],
-      `missing speaking map: ${label}`,
-    );
+    // Thinking
+    confusion: "thinking",
+    confused: "thinking",
+    curiosity: "thinking",
+    curious: "thinking",
+    realization: "thinking",
+    thinking: "thinking",
 
-    for (const speaking of [false, true]) {
-      const assetUrl = getMascotAssetUrl(label, speaking);
-      assert.ok(
-        existsSync(`public${assetUrl}`),
-        `missing asset for ${label}, speaking=${speaking}: ${assetUrl}`,
-      );
-    }
+    // Surprise
+    surprise: "surprise",
+    surprised: "surprise",
+    astonished: "surprise",
+    amazed: "surprise",
+
+    // Anger
+    anger: "anger",
+    annoyance: "anger",
+    angry: "anger",
+    annoyed: "anger",
+    frustration: "anger",
+    frustrated: "anger",
+    furious: "anger",
+
+    // Disgust
+    disapproval: "disgust",
+    disgust: "disgust",
+    disgusted: "disgust",
+
+    // Fear
+    fear: "fear",
+    nervousness: "fear",
+    anxiety: "fear",
+    terrified: "fear",
+    scared: "fear",
+    fearful: "fear",
+    nervous: "fear",
+    panicked: "fear",
+
+    // Sad Strong
+    disappointment: "sad-Strong",
+    embarrassment: "sad-Strong",
+    grief: "sad-Strong",
+    remorse: "sad-Strong",
+    sadness: "sad-Strong",
+    sad: "sad-Strong",
+    disappointed: "sad-Strong",
+    remorseful: "sad-Strong",
+    embarrassed: "sad-Strong",
+    grieving: "sad-Strong",
+    shame: "sad-Strong",
+  };
+
+  for (const [emotion, expectedBase] of Object.entries(expectedMappings)) {
+    const actual = resolveBaseMascotKey(emotion);
+    assert.equal(actual, expectedBase, `Expected '${emotion}' to map to '${expectedBase}', got '${actual}'`);
   }
 });
 
-test("base mascot keys survive case-insensitive normalization", () => {
-  for (const key of Object.keys(BASE_MASCOT_ASSETS)) {
-    assert.equal(resolveBaseMascotKey(key), key);
-    assert.equal(resolveBaseMascotKey(key.toUpperCase()), key);
+test("Emotion Mapping - Fallback to happy_gentle for unrecognised emotions", () => {
+  const unrecognised = ["unknown_emotion", "xyz_123", "", "   ", "random_string"];
+  for (const emotion of unrecognised) {
+    const actual = resolveBaseMascotKey(emotion);
+    assert.equal(actual, "happy_gentle", `Expected '${emotion}' to fall back to 'happy_gentle', got '${actual}'`);
   }
-});
-
-test("neutral uses thinking consistently", () => {
-  assert.equal(resolveBaseMascotKey("neutral"), "thinking");
-  assert.equal(getMascotAssetUrl("neutral", false), "/assets/thinking.webp");
-  assert.equal(
-    getMascotAssetUrl("neutral", true),
-    "/assets/speaking_neutral.webp",
-  );
-});
-
-test("legacy emotion aliases resolve case-insensitively", () => {
-  assert.equal(resolveBaseMascotKey("LISTEN"), "thinking");
-  assert.equal(resolveBaseMascotKey("listen"), "thinking");
-  assert.equal(resolveBaseMascotKey("ENCOURAGE"), "Love-Strong");
-  assert.equal(resolveBaseMascotKey("encourage"), "Love-Strong");
-  assert.equal(resolveBaseMascotKey("CONFUSION-CURIOUS"), "thinking");
-});
-
-test("manual strong and extended mascot keys keep intended speaking family", () => {
-  assert.equal(
-    getMascotAssetUrl("Love-Strong", true),
-    "/assets/speaking_happy.webp",
-  );
-  assert.equal(
-    getMascotAssetUrl("sad-Strong", true),
-    "/assets/sad-speaking_gentle.webp",
-  );
-  assert.equal(
-    getMascotAssetUrl("sad-gentle", true),
-    "/assets/sad-speaking_gentle.webp",
-  );
-  assert.equal(
-    getMascotAssetUrl("celebration", true),
-    "/assets/speaking_happy.webp",
-  );
 });

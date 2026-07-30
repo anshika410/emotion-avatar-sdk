@@ -1,28 +1,5 @@
 import React from "react";
-import "./zoeMascot.js";
 import { getMascotAssetUrl } from "../constants/emotionAssets";
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace React {
-    // eslint-disable-next-line @typescript-eslint/no-namespace
-    namespace JSX {
-      interface IntrinsicElements {
-        "zoe-mascot": React.DetailedHTMLProps<
-          React.HTMLAttributes<HTMLElement>,
-          HTMLElement
-        > & {
-          emotion?: string;
-          "is-speaking"?: string;
-          speaking?: boolean;
-          autoplay?: boolean;
-          loop?: boolean;
-          speed?: number;
-        };
-      }
-    }
-  }
-}
 
 export interface AvatarRendererProps {
   emotionId: string;

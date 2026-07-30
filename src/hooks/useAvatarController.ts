@@ -39,7 +39,7 @@ export interface AvatarControllerReturn {
 
 /** Comprehensive NLP text emotion classifier for sentence-level scoring fallback */
 export function detectRuleBasedEmotion(text: string): string {
-  if (!text || !text.trim()) return "thinking";
+  if (!text || !text.trim()) return "happy_gentle";
   const lower = text.toLowerCase();
 
   // 1. Sadness / Grief / Disappointment / Remorse / Embarrassment
@@ -162,7 +162,7 @@ export function detectRuleBasedEmotion(text: string): string {
   if (signals.sentimentValence > 0.2) return "approval";
   if (signals.sentimentValence < -0.2) return "annoyance";
 
-  return "thinking";
+  return "happy_gentle";
 }
 
 export function useAvatarController({
@@ -170,7 +170,7 @@ export function useAvatarController({
   isListening = false,
   onEmotionDebug,
 }: UseAvatarControllerProps = {}): AvatarControllerReturn {
-  const [emotionId, setEmotionId] = useState<string>("thinking");
+  const [emotionId, setEmotionId] = useState<string>("happy_gentle");
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Store debug callback in ref to maintain a 100% stable analyzeEmotion reference
@@ -211,7 +211,7 @@ export function useAvatarController({
     } else if (typeof emotion === "string") {
       setEmotionId(emotion);
     } else {
-      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "thinking");
+      setEmotionId(EMOTION_STATE_MAP[emotion] ?? "happy_gentle");
     }
   }, []);
 
@@ -221,7 +221,7 @@ export function useAvatarController({
       text: string,
       bypassChunkSizeGate: boolean = false,
     ): Promise<string> => {
-      if (!text.trim()) return "thinking";
+      if (!text.trim()) return "happy_gentle";
 
       try {
         const signals = await processAndClassify(text, bypassChunkSizeGate);
@@ -260,7 +260,7 @@ export function useAvatarController({
     } else if (isListening) {
       setEmotionId("listening");
     } else {
-      setEmotionId("thinking");
+      setEmotionId("happy_gentle");
     }
   }, [isSpeaking, isListening]);
 

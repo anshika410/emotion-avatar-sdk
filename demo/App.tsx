@@ -8,16 +8,16 @@ import {
 import type { EmotionDebugInfo } from "../src/hooks/useAvatarController";
 
 const EMOTION_GROUPS: Record<string, string[]> = {
-  "Love-Strong": ["love", "desire"],
-  "gentle-love": ["caring", "admiration", "gratitude"],
-  happy_strong: ["joy", "amusement", "excitement", "pride"],
-  happy_gentle: ["approval", "optimism", "relief"],
-  thinking: ["neutral", "curiosity", "realization", "confusion"],
-  surprise: ["surprise"],
-  anger: ["anger", "annoyance"],
-  disgust: ["disgust", "disapproval"],
-  fear: ["fear", "nervousness"],
-  "sad-Strong": ["sadness", "grief", "disappointment", "remorse", "embarrassment"],
+  "Love-Strong": ["love", "love_strong", "heartfelt"],
+  "gentle-love": ["caring", "admiration", "gratitude", "desire", "love_gentle", "affection"],
+  happy_strong: ["joy", "amusement", "excitement", "pride", "happiness", "happy", "excited", "thrilled"],
+  happy_gentle: ["approval", "optimism", "relief", "neutral", "pleased", "content"],
+  thinking: ["curiosity", "realization", "confusion", "confused", "thinking", "curious"],
+  surprise: ["surprise", "surprised", "astonished", "amazed"],
+  anger: ["anger", "annoyance", "angry", "annoyed", "frustration", "frustrated", "furious"],
+  disgust: ["disgust", "disapproval", "disgusted"],
+  fear: ["fear", "nervousness", "anxiety", "terrified", "scared", "fearful", "nervous", "panicked"],
+  "sad-Strong": ["sadness", "grief", "disappointment", "remorse", "embarrassment", "sad", "disappointed", "remorseful", "embarrassed", "grieving", "shame"],
 };
 
 const PRESET_CONVERSATIONS = [

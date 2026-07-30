@@ -69,8 +69,8 @@ export function AnimatedAvatar({
 
       if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
       aiResetTimeout.current = setTimeout(() => {
-        setEmotion("thinking");
-      }, 3500);
+        setEmotion("happy_gentle");
+      }, 1000);
     });
 
     return () => {
@@ -96,7 +96,7 @@ export function AnimatedAvatar({
           clearTimeout(interimResetTimeout.current);
         interimResetTimeout.current = setTimeout(() => {
           resetEmotionProcessing();
-          setEmotion("thinking");
+          setEmotion("happy_gentle");
         }, 3500);
       });
     }
@@ -131,10 +131,10 @@ export function AnimatedAvatar({
         clearTimeout(finalResetTimeout.current);
       }
 
-      // After long pause (3.5 seconds), return back to neutral emotion ("thinking")
+      // After long pause (3.5 seconds), return back to neutral emotion ("happy_gentle")
       finalResetTimeout.current = setTimeout(() => {
         resetEmotionProcessing();
-        setEmotion("thinking");
+        setEmotion("happy_gentle");
       }, 3500);
     };
 

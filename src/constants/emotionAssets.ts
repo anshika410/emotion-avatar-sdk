@@ -22,7 +22,6 @@ export type BaseMascotKey =
 export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   // Love-Strong
   love: "Love-Strong",
-  desire: "Love-Strong",
   love_strong: "Love-Strong",
   heartfelt: "Love-Strong",
 
@@ -32,6 +31,7 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   gratitude: "gentle-love",
   love_gentle: "gentle-love",
   affection: "gentle-love",
+  desire: "gentle-love",
 
   // happy_strong
   joy: "happy_strong",
@@ -50,9 +50,9 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   relief: "happy_gentle",
   pleased: "happy_gentle",
   content: "happy_gentle",
+  neutral: "happy_gentle",
 
   // thinking
-  neutral: "thinking",
   curiosity: "thinking",
   realization: "thinking",
   confusion: "thinking",
@@ -101,6 +101,7 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   remorseful: "sad-Strong",
   embarrassed: "sad-Strong",
   grieving: "sad-Strong",
+  shame: "sad-Strong",
 };
 
 /** WebP image URLs for base mascots resolved via standard ESM URL constructor */
@@ -249,7 +250,7 @@ const NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION = Object.fromEntries(
 
 /** Resolves any emotion input to a base mascot key */
 export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
-  if (!emotionInput) return "thinking";
+  if (!emotionInput) return "happy_gentle";
 
   const normalized = emotionInput.trim().toLowerCase();
 
@@ -270,8 +271,8 @@ export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
     return MODEL_EMOTION_TO_BASE_MASCOT[legacyMatch.toLowerCase()];
   }
 
-  // Default fallback
-  return "thinking";
+  // Default fallback for unrecognized emotions
+  return "happy_gentle";
 }
 
 /** Resolves an emotion input and speaking state to the target WebP image URL */
@@ -279,7 +280,7 @@ export function getMascotAssetUrl(
   emotionInput: string,
   isSpeaking: boolean = false,
 ): string {
-  const normalized = emotionInput ? emotionInput.trim().toLowerCase() : "neutral";
+  const normalized = emotionInput ? emotionInput.trim().toLowerCase() : "happy_gentle";
 
   if (isSpeaking) {
     // Check direct model emotion speaking asset
@@ -320,5 +321,5 @@ export function getMascotAssetUrl(
 
   // Idle state: resolve base mascot WebP asset
   const baseKey = resolveBaseMascotKey(normalized);
-  return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS.thinking;
+  return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS.happy_gentle;
 }
