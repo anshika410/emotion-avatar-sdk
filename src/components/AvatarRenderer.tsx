@@ -39,7 +39,6 @@ export function AvatarRenderer({
   isSpeaking = false,
   className,
   style: userStyle,
-  speed = 1,
 }: AvatarRendererProps) {
   const defaultContainerStyle: React.CSSProperties = {
     width: "260px",
@@ -58,20 +57,16 @@ export function AvatarRenderer({
 
   return (
     <div style={mergedStyle} className={className}>
-      <zoe-mascot
-        emotion={emotionId}
-        is-speaking={isSpeaking ? "true" : "false"}
-        autoplay
-        loop
-        speed={speed}
-        style={{ width: "100%", height: "100%", backgroundColor: "#ffffff" }}
-      >
-        <img
-          src={assetUrl}
-          alt={emotionId}
-          style={{ width: "100%", height: "100%", objectFit: "contain", backgroundColor: "#ffffff" }}
-        />
-      </zoe-mascot>
+      <img
+        src={assetUrl}
+        alt={emotionId}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          backgroundColor: "#ffffff",
+        }}
+      />
     </div>
   );
 }
