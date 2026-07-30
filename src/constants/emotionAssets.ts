@@ -13,7 +13,9 @@ export type BaseMascotKey =
   | "anger"
   | "disgust"
   | "fear"
-  | "sad-Strong";
+  | "sad-Strong"
+  | "celebration"
+  | "sad-gentle";
 
 /** Source of Truth mapping from 28 model emotions and synonyms to base mascots */
 export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
@@ -37,7 +39,7 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   pride: "happy_strong",
   happiness: "happy_strong",
   happy: "happy_strong",
-  celebration: "happy_strong",
+  celebration: "celebration",
   excited: "happy_strong",
   thrilled: "happy_strong",
 
@@ -49,7 +51,7 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   content: "happy_gentle",
 
   // thinking
-  neutral: "thinking",
+  neutral: "happy_gentle",
   curiosity: "thinking",
   realization: "thinking",
   confusion: "thinking",
@@ -117,7 +119,7 @@ export const BASE_MASCOT_ASSETS: Record<BaseMascotKey | string, string> = {
   celebration: getAssetUrl("celebration.webp"),
   shoked: getAssetUrl("shoked.webp"),
 };
-
+  
 /** Dedicated speaking assets resolved via standard ESM URL constructor */
 export const SPEAKING_ASSETS = {
   speaking_happy: getAssetUrl("speaking_happy.webp"),

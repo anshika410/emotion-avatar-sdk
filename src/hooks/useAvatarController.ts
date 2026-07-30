@@ -4,8 +4,8 @@ import { EmotionState } from "../types/emotion";
 import {
   classifyEmotion,
   warmUpEmotionClassifier,
-} from "../services/emotion/emotionClassifier.js";
-import { extractTextSignals } from "../services/emotion/emotionStreamProcessor.js";
+} from "../services/emotion/emotionClassifier";
+import { extractTextSignals } from "../services/emotion/emotionStreamProcessor";
 
 export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
   [EmotionState.LISTEN]: "thinking",

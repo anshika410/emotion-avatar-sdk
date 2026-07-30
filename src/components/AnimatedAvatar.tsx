@@ -46,6 +46,7 @@ export function AnimatedAvatar({
 
   const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Message deduplication refs to prevent infinite re-analysis loops
   const lastAnalyzedAiMessage = useRef<string>("");
@@ -56,6 +57,7 @@ export function AnimatedAvatar({
     onInitialized?.(isInitialized);
   }, [isInitialized, onInitialized]);
 
+  // AI Message: Analyzed when complete AI sentence arrives, returns to neutral after 3.5s pause
   useEffect(() => {
     if (!aiMessage || !isInitialized || !isSpeaking) return;
     if (lastAnalyzedAiMessage.current === aiMessage) return;
@@ -63,31 +65,39 @@ export function AnimatedAvatar({
     lastAnalyzedAiMessage.current = aiMessage;
     analyzeEmotion(aiMessage, true).then((detected: string) => {
       if (detected) setEmotion(detected);
+
+      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+      aiResetTimeout.current = setTimeout(() => {
+        setEmotion("thinking");
+      }, 3500);
     });
+
+    return () => {
+      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+    };
   }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
 
+  // User Interim Speech/Transcript: Only trigger emotion change on complete sentence boundaries (full stop, ?, !, ;)
+  // Returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
     if (lastAnalyzedInterim.current === userMessageInterim) return;
 
-    const wordCount = userMessageInterim.trim().split(/\s+/).length;
-    const charCount = userMessageInterim.length;
+    const trimmed = userMessageInterim.trim();
+    const hasSentenceBoundary = /[.!?;\n]$/.test(trimmed);
 
-    if (wordCount > 3 || charCount > 20) {
+    if (hasSentenceBoundary) {
       lastAnalyzedInterim.current = userMessageInterim;
-      analyzeEmotion(userMessageInterim).then((detected: string) => {
-        setEmotion(detected);
+      analyzeEmotion(userMessageInterim, true).then((detected: string) => {
+        if (detected) setEmotion(detected);
+
+        if (interimResetTimeout.current) clearTimeout(interimResetTimeout.current);
+        interimResetTimeout.current = setTimeout(() => {
+          resetEmotionProcessing();
+          setEmotion("happy_gentle"); // Return to neutral emotion after long pause
+        }, 3500);
       });
     }
-
-    // Restart inactivity timer
-    if (interimResetTimeout.current) {
-      clearTimeout(interimResetTimeout.current);
-    }
-
-    interimResetTimeout.current = setTimeout(() => {
-      resetEmotionProcessing();
-    }, 5000);
 
     return () => {
       if (interimResetTimeout.current) {
@@ -96,6 +106,7 @@ export function AnimatedAvatar({
     };
   }, [userMessageInterim, isInitialized, analyzeEmotion, setEmotion]);
 
+  // User Final Message: Triggered when sentence/turn completes, returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
     if (lastAnalyzedFinal.current === userMessageFinal) return;
@@ -113,10 +124,11 @@ export function AnimatedAvatar({
         clearTimeout(finalResetTimeout.current);
       }
 
-      // Delay the reset by 1 second so the user can see the final emotion
+      // After long pause (3.5 seconds), return back to neutral emotion ("thinking")
       finalResetTimeout.current = setTimeout(() => {
         resetEmotionProcessing();
-      }, 1000);
+        setEmotion("happy_gentle"); // Return back to neutral mascot!
+      }, 3500);
     };
 
     processFinalEmotion();
