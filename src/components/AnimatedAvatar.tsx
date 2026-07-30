@@ -147,7 +147,7 @@ export function AnimatedAvatar({
     };
   }, [userMessageFinal, isInitialized, analyzeEmotion, setEmotion]);
 
-  // Loading state
+  // Loading state - show default WebP image while dependencies load
   if (!isInitialized) {
     const loadingSize = 260; // fallback size
     return (
@@ -163,47 +163,62 @@ export function AnimatedAvatar({
           style={{
             width: loadingSize,
             height: loadingSize,
-            borderRadius: "50%",
+            borderRadius: "20px",
             background: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            // boxShadow: "0 1px 8px rgba(82,82,82,0.06)",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+            border: "2px solid #e2e8f0",
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          <svg
-            width="100"
-            height="50"
-            viewBox="0 0 180 90"
-            xmlns="http://www.w3.org/2000/svg"
+          {/* Default WebP loading image */}
+          <img
+            src="/assets/happy_gentle.webp"
+            alt="Loading avatar"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              padding: "8px",
+              opacity: 0.9,
+            }}
+          />
+          {/* Subtle loading indicator overlay */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "8px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: loadingSize * 0.4,
+              height: "3px",
+              background: "#e2e8f0",
+              borderRadius: "2px",
+              overflow: "hidden",
+            }}
           >
-            <style>
-              {`.dot {
-                fill: #0CF075;
-                stroke: #000600;
-                stroke-width: 5;
-                transform-box: fill-box;
-                transform-origin: center;
-                animation: bounce 0.9s ease-in-out infinite;
+            <div
+              style={{
+                width: "40%",
+                height: "100%",
+                background: "#4f9eed",
+                borderRadius: "2px",
+                animation: "avatar-loading-slide 1.5s ease-in-out infinite",
+              }}
+            />
+          </div>
+          <style>
+            {`
+              @keyframes avatar-loading-slide {
+                0% { transform: translateX(-100%); }
+                50% { transform: translateX(200%); }
+                100% { transform: translateX(400%); }
               }
-              .dot--1 { animation-delay: 0s; }
-              .dot--2 { animation-delay: 0.15s; }
-              .dot--3 { animation-delay: 0.3s; }
-          
-              @keyframes bounce {
-                0%, 100% {
-                  transform: translateY(0);
-                }
-                50% {
-                  transform: translateY(-28px);
-                }
-              }`}
-            </style>
-
-            <circle className="dot dot--1" cx="40" cy="60" r="14" />
-            <circle className="dot dot--2" cx="90" cy="60" r="14" />
-            <circle className="dot dot--3" cx="140" cy="60" r="14" />
-          </svg>
+            `}
+          </style>
         </div>
       </div>
     );
