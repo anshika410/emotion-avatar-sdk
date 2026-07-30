@@ -7,21 +7,10 @@ import {
   disposeEmotionModel,
 } from "../services/emotion/onnxRuntime";
 import { extractTextSignals } from "../services/emotion/emotionStreamProcessor";
+import { DEFAULT_AVATAR_EMOTIONS } from "../constants/defaultImages";
 
-export const EMOTION_STATE_MAP: Record<EmotionState, string> = {
-  [EmotionState.LISTEN]: "thinking",
-  [EmotionState.SPEAK_NEUTRAL]: "thinking",
-  [EmotionState.ENCOURAGE]: "Love-Strong",
-  [EmotionState.THINK]: "thinking",
-  [EmotionState.CAUTION]: "anger",
-  [EmotionState.CELEBRATE]: "happy_strong",
-  [EmotionState.HAPPY]: "happy_strong",
-  [EmotionState.SAD]: "sad-Strong",
-  [EmotionState.ANGRY]: "anger",
-  [EmotionState.SURPRISED]: "surprise",
-  [EmotionState.SHOCK]: "fear",
-  [EmotionState.CONFUSE]: "thinking",
-};
+export const EMOTION_STATE_MAP: Record<EmotionState, string> =
+  DEFAULT_AVATAR_EMOTIONS;
 
 export type EmotionDebugInfo = Awaited<
   ReturnType<typeof processAndClassify>
@@ -182,7 +171,7 @@ export function useAvatarController({
   onEmotionDebug,
 }: UseAvatarControllerProps = {}): AvatarControllerReturn {
   const [emotionId, setEmotionId] = useState<string>("thinking");
-  const [isInitialized, setIsInitialized] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Store debug callback in ref to maintain a 100% stable analyzeEmotion reference
   const onEmotionDebugRef = useRef(onEmotionDebug);
@@ -237,16 +226,14 @@ export function useAvatarController({
       try {
         const signals = await processAndClassify(text, bypassChunkSizeGate);
         console.log("signals coming from model:", signals);
-        let state: string = "";
+        let state: string;
         if (signals?.modelEmotion) {
-          state = signals?.modelEmotion;
-        } else if (signals?.sentimentValence > 0.3) {
-          state = "approval";
-        } else if (signals?.sentimentValence < -0.3) {
-          state = "annoyance";
+          state = signals.modelEmotion;
+        } else {
+          state = detectRuleBasedEmotion(text);
         }
 
-        onEmotionDebug?.({
+        onEmotionDebugRef.current?.({
           ...signals,
           transcript: text,
           state,
@@ -256,6 +243,11 @@ export function useAvatarController({
       } catch (error) {
         console.warn("[useAvatarController] Emotion analysis fallback:", error);
         const fallbackState = detectRuleBasedEmotion(text);
+        onEmotionDebugRef.current?.({
+          ...extractTextSignals(text),
+          transcript: text,
+          state: fallbackState,
+        });
         return fallbackState;
       }
     },
@@ -263,12 +255,12 @@ export function useAvatarController({
   );
 
   useEffect(() => {
-    if (isSpeaking && !isListening) {
+    if (isSpeaking) {
       setEmotionId("neutral-focused");
-    } else if (!isSpeaking && isListening) {
+    } else if (isListening) {
       setEmotionId("listening");
     } else {
-      setEmotionId("listening");
+      setEmotionId("thinking");
     }
   }, [isSpeaking, isListening]);
 

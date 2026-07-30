@@ -23,6 +23,7 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "demo": "vite",
+    "test": "npm run build && node --test tests/emotionMappings.test.mjs",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },

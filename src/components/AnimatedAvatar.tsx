@@ -96,7 +96,7 @@ export function AnimatedAvatar({
           clearTimeout(interimResetTimeout.current);
         interimResetTimeout.current = setTimeout(() => {
           resetEmotionProcessing();
-          setEmotion("happy_gentle"); // Return to neutral emotion after long pause
+          setEmotion("thinking");
         }, 3500);
       });
     }
@@ -134,7 +134,7 @@ export function AnimatedAvatar({
       // After long pause (3.5 seconds), return back to neutral emotion ("thinking")
       finalResetTimeout.current = setTimeout(() => {
         resetEmotionProcessing();
-        setEmotion("happy_gentle"); // Return back to neutral mascot!
+        setEmotion("thinking");
       }, 3500);
     };
 

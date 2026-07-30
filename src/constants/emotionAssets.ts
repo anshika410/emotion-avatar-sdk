@@ -15,7 +15,8 @@ export type BaseMascotKey =
   | "fear"
   | "sad-Strong"
   | "celebration"
-  | "sad-gentle";
+  | "sad-gentle"
+  | "shoked";
 
 /** Source of Truth mapping from 28 model emotions and synonyms to base mascots */
 export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
@@ -51,7 +52,7 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
   content: "happy_gentle",
 
   // thinking
-  neutral: "happy_gentle",
+  neutral: "thinking",
   curiosity: "thinking",
   realization: "thinking",
   confusion: "thinking",
@@ -103,7 +104,7 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
 };
 
 /** WebP image URLs for base mascots resolved via standard ESM URL constructor */
-export const BASE_MASCOT_ASSETS: Record<BaseMascotKey | string, string> = {
+export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
   "Love-Strong": getAssetUrl("Love-Strong.webp"),
   "gentle-love": getAssetUrl("gentle-love.webp"),
   happy_strong: getAssetUrl("happy_strong.webp"),
@@ -119,6 +120,13 @@ export const BASE_MASCOT_ASSETS: Record<BaseMascotKey | string, string> = {
   celebration: getAssetUrl("celebration.webp"),
   shoked: getAssetUrl("shoked.webp"),
 };
+
+const NORMALIZED_BASE_MASCOT_KEYS = Object.fromEntries(
+  (Object.keys(BASE_MASCOT_ASSETS) as BaseMascotKey[]).map((key) => [
+    key.toLowerCase(),
+    key,
+  ]),
+) as Record<string, BaseMascotKey>;
   
 /** Dedicated speaking assets resolved via standard ESM URL constructor */
 export const SPEAKING_ASSETS = {
@@ -232,6 +240,13 @@ const LEGACY_ID_TO_MODEL_EMOTION: Record<string, string> = {
   "sarcasm-knowing": "confusion",
 };
 
+const NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION = Object.fromEntries(
+  Object.entries(LEGACY_ID_TO_MODEL_EMOTION).map(([key, value]) => [
+    key.toLowerCase(),
+    value,
+  ]),
+) as Record<string, string>;
+
 /** Resolves any emotion input to a base mascot key */
 export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
   if (!emotionInput) return "thinking";
@@ -244,12 +259,13 @@ export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
   }
 
   // 2. Direct match with a base mascot key
-  if (normalized in BASE_MASCOT_ASSETS) {
-    return normalized as BaseMascotKey;
+  const directBaseKey = NORMALIZED_BASE_MASCOT_KEYS[normalized];
+  if (directBaseKey) {
+    return directBaseKey;
   }
 
   // 3. Match via legacy alias
-  const legacyMatch = LEGACY_ID_TO_MODEL_EMOTION[emotionInput.trim()];
+  const legacyMatch = NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION[normalized];
   if (legacyMatch && legacyMatch.toLowerCase() in MODEL_EMOTION_TO_BASE_MASCOT) {
     return MODEL_EMOTION_TO_BASE_MASCOT[legacyMatch.toLowerCase()];
   }
@@ -272,7 +288,7 @@ export function getMascotAssetUrl(
     }
 
     // Check legacy ID resolved to model emotion
-    const legacyEmotion = LEGACY_ID_TO_MODEL_EMOTION[emotionInput.trim()];
+    const legacyEmotion = NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION[normalized];
     if (legacyEmotion && legacyEmotion.toLowerCase() in MODEL_EMOTION_TO_SPEAKING_ASSET) {
       return MODEL_EMOTION_TO_SPEAKING_ASSET[legacyEmotion.toLowerCase()];
     }
@@ -285,15 +301,18 @@ export function getMascotAssetUrl(
       case "Love-Strong":
       case "gentle-love":
       case "surprise":
+      case "celebration":
         return SPEAKING_ASSETS.speaking_happy;
 
       case "sad-Strong":
+      case "sad-gentle":
         return SPEAKING_ASSETS["sad-speaking_gentle"];
 
       case "thinking":
       case "anger":
       case "disgust":
       case "fear":
+      case "shoked":
       default:
         return SPEAKING_ASSETS.speaking_neutral;
     }

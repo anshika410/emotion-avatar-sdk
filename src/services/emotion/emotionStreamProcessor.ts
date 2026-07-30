@@ -1029,8 +1029,8 @@ async function scoreChunkWithModel(chunkText: string): Promise<{
       // Expected under load — a fresher request already superseded this one.
       return { scores: null, inferenceMs: 0, fromCache: false };
     }
-    // Graceful fallback to rule-based classification when ML model is warming up or unavailable
-    return { scores: null, inferenceMs: 0, fromCache: false };
+    // Let the controller run its rule-based classifier when ML is unavailable.
+    throw error;
   }
 }
 

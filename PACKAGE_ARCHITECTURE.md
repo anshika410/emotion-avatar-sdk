@@ -144,10 +144,10 @@ Prediction Smoothing
 Emotion Mapping
         │
         ▼
-EmotionState
+Base Mascot Key
         │
         ▼
-Avatar Animation
+Idle / Speaking Asset
 ```
 
 The rule-based analysis extracts lightweight signals such as sentiment and content completeness, while the ML model provides emotion predictions. The SDK smooths consecutive predictions to reduce rapid avatar switching and produce more natural animations.
@@ -156,23 +156,25 @@ The rule-based analysis extracts lightweight signals such as sentiment and conte
 
 # Emotion Mapping
 
-The emotion classifier predicts one of several emotion labels which are mapped to avatar animation states.
+The classifier emits 28 GoEmotions labels. Each label maps directly to a base
+mascot key; speaking state then selects the corresponding speaking asset.
 
-| Model Emotion | Avatar State |
-|---------------|--------------|
-| happiness | HAPPY |
-| love | ENCOURAGE |
-| desire | ENCOURAGE |
-| anger | CAUTION |
-| disgust | ANGRY |
-| fear | SHOCK |
-| sadness | SAD |
-| surprise | SURPRISED |
-| confusion | CONFUSE |
-| sarcasm | CONFUSE |
-| shame | SAD |
-| guilt | CAUTION |
-| Default / Neutral | LISTEN |
+| Model emotions | Base mascot key |
+|----------------|------------------|
+| love, desire | Love-Strong |
+| caring, admiration, gratitude | gentle-love |
+| joy, amusement, excitement, pride | happy_strong |
+| approval, optimism, relief | happy_gentle |
+| neutral, curiosity, realization, confusion | thinking |
+| surprise | surprise |
+| anger, annoyance | anger |
+| disgust, disapproval | disgust |
+| fear, nervousness | fear |
+| sadness, grief, disappointment, remorse, embarrassment | sad-Strong |
+
+Legacy `EmotionState` values and mascot keys pass through the same resolver.
+Matching is case-insensitive, including mixed-case keys such as `Love-Strong`
+and `sad-Strong`.
 
 ---
 
