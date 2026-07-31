@@ -34,6 +34,7 @@ export interface AvatarControllerReturn {
   analyzeEmotion: (
     text: string,
     bypassChunkSizeGate?: boolean,
+    bypassBuffer?: boolean,
   ) => Promise<string>;
 }
 
@@ -220,11 +221,12 @@ export function useAvatarController({
     async (
       text: string,
       bypassChunkSizeGate: boolean = false,
+      bypassBuffer: boolean = false,
     ): Promise<string> => {
       if (!text.trim()) return "neutral";
 
       try {
-        const signals = await processAndClassify(text, bypassChunkSizeGate);
+        const signals = await processAndClassify(text, bypassChunkSizeGate, bypassBuffer);
         console.log(`[useAvatarController] Emotion received: ${signals.modelEmotion}`)
         let state: string;
         if (signals?.modelEmotion) {

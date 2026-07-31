@@ -16,7 +16,6 @@ export interface AnimatedAvatarProps {
   isListening?: boolean;
   onInitialized?: (isInitialized: boolean) => void;
   onEmotionDebug?: (info: EmotionDebugInfo) => void;
-
   /** CSS class for the outer wrapper (layout container) */
   containerClassName?: string;
   /** CSS class for the avatar image (optional) */
@@ -78,7 +77,8 @@ export function AnimatedAvatar({
     const wordCount = userMessageInterim.trim().split(/\s+/).length;
     const charCount = userMessageInterim.length;
 
-    if (wordCount > 3 || charCount > 20) {
+    console.log(`\nINTERIM TRANSCRIPT`)
+    if (wordCount > 2 || charCount > 16) {
       analyzeEmotion(userMessageInterim).then((detected: string) => {
         console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
         setEmotion(detected);
@@ -104,8 +104,9 @@ export function AnimatedAvatar({
   // User Final Message: Triggered when sentence/turn completes, returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
+    console.log(`\nFINAL TRANSCRIPT`)
     const processFinalEmotion = async () => {
-      const detected = await analyzeEmotion(userMessageFinal, true);
+      const detected = await analyzeEmotion(userMessageFinal, true, true);
       // Display the detected emotion
       setEmotion(detected);
       console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
@@ -118,8 +119,8 @@ export function AnimatedAvatar({
       // After long pause (3.5 seconds), return back to neutral emotion ("neutral")
       finalResetTimeout.current = setTimeout(() => {
         resetEmotionProcessing();
-        setEmotion("neutral");
-      }, 1000);
+        // setEmotion("neutral");
+      }, 2000);
     };
 
     processFinalEmotion();

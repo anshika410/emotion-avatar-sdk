@@ -518,7 +518,7 @@ function markSegmentChunkSent(sentText: string): void {
 // ──────────────────── Rolling average + threshold logic ────────────────────
 
 /** Number of past predictions for taking average */
-const SMOOTHING_WINDOW = 3;
+const SMOOTHING_WINDOW = 4;
 
 /**
  * Minimum gap between top two smoothed emotions to allow a switch.
@@ -1065,6 +1065,7 @@ async function scoreChunkWithModel(chunkText: string): Promise<{
 export async function processAndClassify(
   transcript: string,
   bypassChunkSizeGate: boolean = false,
+  bypassBuffer: boolean = false,
 ): Promise<TextSignals & {
   topEmotions?: Array<{ emotion: string; score: number }>;
   explanation?: EmotionExplanation;
@@ -1104,7 +1105,6 @@ export async function processAndClassify(
       if (DEBUG_LOGGING) console.log(`[EMOTION PROCESSING] Processing Skipped`)
       continue
     };
-    markSegmentChunkSent(candidate.text);
     chunksToScore.push(candidate);
   }
 
@@ -1140,6 +1140,7 @@ export async function processAndClassify(
   }
 
   let smoothedScores: Record<string, number> = peekSmoothedScores();
+  let correctedScores: Record<string, number> = {...smoothedScores}
   let anyContrastShift = false;
   let totalInferenceMs = 0;
 
@@ -1149,11 +1150,18 @@ export async function processAndClassify(
     if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Inferencing Model`) }
     const { scores: rawScores, inferenceMs, fromCache } = await scoreChunkWithModel(chunk.text);
     totalInferenceMs += inferenceMs;
-    chunksScored.push(chunk.text);
     if (!rawScores) continue; // inference failed/superseded — skip this chunk, keep prior smoothing state
+    chunksScored.push(chunk.text);
 
+    // Only now do we know this exact text was actually scored — safe to
+  // advance the tail segment's "last sent" baseline. segmentComplete
+  // chunks never call this (unchanged from before): decideChunksToFlush
+  // already moved the segment boundary for those via startNewSegment.
+  if (!chunk.segmentComplete) {
+    markSegmentChunkSent(chunk.text);
+  }
     const chunkAnalysis = analyzeSegment(extractWords(chunk.text));
-    const correctedScores = applyLexicalCorrection(rawScores, chunkAnalysis);
+    correctedScores = applyLexicalCorrection(rawScores, chunkAnalysis);
 
     if (chunk.postContrastShift) {
       // Clear smoothing history BEFORE folding in this chunk's scores, so
@@ -1169,6 +1177,11 @@ export async function processAndClassify(
       console.log(`[EMOTION PROCESSING] chunk="${chunk.text}" cache=${fromCache}\nraw=`, rawScores, "\ncorrected=", correctedScores);
       console.log(`Emotion Buffer:\n${JSON.stringify(getTopN(smoothedScores, 5))}`)
     }
+  }
+  
+  if (bypassBuffer) {
+    if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Final Transcript; Bypassing Buffer`) }
+    smoothedScores = correctedScores 
   }
 
   const topTwo = getTopN(smoothedScores, 2);
