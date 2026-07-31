@@ -1131,6 +1131,9 @@ export async function processAndClassify(
     chunksScored.push(chunk.text);
     if (!rawScores) continue; // inference failed/superseded — skip this chunk, keep prior smoothing state
 
+    // Log raw model signals
+    console.log(`[Emotion Model] Raw signals for chunk: "${chunk.text}"`, rawScores);
+
     const chunkAnalysis = analyzeSegment(extractWords(chunk.text));
     const correctedScores = applyLexicalCorrection(rawScores, chunkAnalysis);
 
@@ -1181,6 +1184,9 @@ export async function processAndClassify(
       lastEmittedConfidence = emittedConfidence;
     }
   }
+
+  // Log detected emotion
+  console.log(`[Emotion Detected] ${emittedEmotion} (confidence: ${(emittedConfidence * 100).toFixed(2)}%)`);
 
   return {
     ...base,

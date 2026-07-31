@@ -184,7 +184,7 @@ export function useAvatarController({
     let isCancelled = false;
 
     const timer = setTimeout(() => {
-      warmUpEmotionModel({ useWorkerProxy: true, numThreads: 1 })
+      warmUpEmotionModel({ useWorkerProxy: false, numThreads: 1 })
         .then(() => {
           if (!isCancelled) setIsInitialized(true);
         })

@@ -5,7 +5,7 @@ import {
   useAvatarController,
   type EmotionDebugInfo,
 } from "../hooks/useAvatarController";
-import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
+// import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
 import { BASE_MASCOT_ASSETS } from "../constants/emotionAssets";
 
 export interface AnimatedAvatarProps {
@@ -68,10 +68,10 @@ export function AnimatedAvatar({
     analyzeEmotion(aiMessage, true).then((detected: string) => {
       if (detected) setEmotion(detected);
 
-      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
-      aiResetTimeout.current = setTimeout(() => {
-        setEmotion("neutral");
-      }, 1000);
+      // if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+      // aiResetTimeout.current = setTimeout(() => {
+      //   setEmotion("neutral");
+      // });
     });
 
     return () => {
@@ -85,7 +85,15 @@ export function AnimatedAvatar({
     if (!userMessageInterim || !isInitialized) return;
     if (lastAnalyzedInterim.current === userMessageInterim) return;
 
-    // const trimmed = userMessageInterim.trim();
+    const trimmed = userMessageInterim.trim();
+    const hasSentenceBoundary = /[.!?;\n]$/.test(trimmed);
+
+    if (hasSentenceBoundary) {
+      lastAnalyzedInterim.current = userMessageInterim;
+      analyzeEmotion(userMessageInterim, true).then((detected: string) => {
+        if (detected) setEmotion(detected);
+      });
+    }
 
     return () => {
       if (interimResetTimeout.current) {
@@ -112,10 +120,10 @@ export function AnimatedAvatar({
       }
 
       // After long pause (3.5 seconds), return back to neutral emotion ("neutral")
-      finalResetTimeout.current = setTimeout(() => {
-        resetEmotionProcessing();
-        setEmotion("neutral");
-      }, 1000);
+      // finalResetTimeout.current = setTimeout(() => {
+      //   resetEmotionProcessing();
+      //   setEmotion("neutral");
+      // }, 3500);
     };
 
     processFinalEmotion();
@@ -143,15 +151,13 @@ export function AnimatedAvatar({
           style={{
             width: loadingSize,
             height: loadingSize,
-            borderRadius: "20px",
-            background: "#ffffff",
-            display: "flex",
+            borderRadius: "16px",
+            backgroundColor: "#ffffff",
+            display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-            border: "2px solid #e2e8f0",
-            position: "relative",
             overflow: "hidden",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
           }}
         >
           {/* Default WebP loading image */}
@@ -162,43 +168,9 @@ export function AnimatedAvatar({
               width: "100%",
               height: "100%",
               objectFit: "contain",
-              padding: "8px",
-              opacity: 0.9,
+              backgroundColor: "#ffffff",
             }}
           />
-          {/* Subtle loading indicator overlay */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "8px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: loadingSize * 0.4,
-              height: "3px",
-              background: "#e2e8f0",
-              borderRadius: "2px",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: "40%",
-                height: "100%",
-                background: "#4f9eed",
-                borderRadius: "2px",
-                animation: "avatar-loading-slide 1.5s ease-in-out infinite",
-              }}
-            />
-          </div>
-          <style>
-            {`
-              @keyframes avatar-loading-slide {
-                0% { transform: translateX(-100%); }
-                50% { transform: translateX(200%); }
-                100% { transform: translateX(400%); }
-              }
-            `}
-          </style>
         </div>
       </div>
     );

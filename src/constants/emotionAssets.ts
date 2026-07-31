@@ -111,8 +111,8 @@ export const MODEL_EMOTION_TO_BASE_MASCOT: Record<string, BaseMascotKey> = {
 export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
   "Love-Strong": getAssetUrl("Love-Strong.webp"),
   "gentle-love": getAssetUrl("gentle-love.webp"),
-  happy_strong: getAssetUrl("happy_strong.webp"),
-  happy_gentle: getAssetUrl("happy_gentle.webp"),
+  happy_strong: getAssetUrl("happy-strong.webp"),
+  happy_gentle: getAssetUrl("happy-gentle.webp"),
   thinking: getAssetUrl("thinking.webp"),
   surprise: getAssetUrl("surprise.webp"),
   anger: getAssetUrl("anger.webp"),
@@ -123,7 +123,7 @@ export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
   "sad-gentle": getAssetUrl("sad-gentle.webp"),
   celebration: getAssetUrl("celebration.webp"),
   shoked: getAssetUrl("shoked.webp"),
-  neutral: getAssetUrl("nuetral.webp"),
+  neutral: getAssetUrl("neutral.webp"),
 };
 
 const NORMALIZED_BASE_MASCOT_KEYS = Object.fromEntries(
