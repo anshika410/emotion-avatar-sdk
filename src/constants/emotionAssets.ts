@@ -48,7 +48,7 @@ export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
   fear: asset("fear"),
   "sad-strong": asset("sad-Strong"),          // actual file: sad-Strong.webp
   "sad-gentle": asset("sad-gentle"),
-  celebration: asset("celebration"),
+  "celebration": asset("celebration"),
   shoked: asset("shoked"),
   "speaking-happy": asset("speaking_happy"),      // actual file: speaking_happy.webp
   "speaking-neutral": asset("speaking_neutral"),  // actual file: speaking_neutral.webp
@@ -124,7 +124,7 @@ Record<string, BaseMascotKey> = {
   curiosity: "thinking",
   excitement: "happy-strong",
   joy: "happy-strong",
-  pride: "happy-strong",
+  pride: "celebration",
   amusement: "happy-strong",
 
   admiration: "happy-gentle",

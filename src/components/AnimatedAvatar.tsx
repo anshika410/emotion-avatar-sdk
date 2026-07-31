@@ -25,7 +25,7 @@ export interface AnimatedAvatarProps {
 }
 
 export function AnimatedAvatar({
-  // aiMessage = "",
+  aiMessage = "",
   userMessageInterim = "",
   userMessageFinal = "",
   isSpeaking = false,
@@ -47,29 +47,29 @@ export function AnimatedAvatar({
     null,
   );
   const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onInitialized?.(isInitialized);
   }, [isInitialized, onInitialized]);
 
   // AI Message: Analyzed when complete AI sentence arrives, returns to neutral after 3.5s pause
-  // useEffect(() => {
-  //   if (!aiMessage || !isInitialized || !isSpeaking) return;
+  useEffect(() => {
+    if (!aiMessage || !isInitialized || !isSpeaking) return;
 
-  //   analyzeEmotion(aiMessage, true).then((detected: string) => {
-  //     if (detected) setEmotion(detected);
+    analyzeEmotion(aiMessage, true).then((detected: string) => {
+      if (detected) setEmotion(detected);
 
-  //     if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
-  //     aiResetTimeout.current = setTimeout(() => {
-  //       setEmotion("neutral");
-  //     }, 1000);
-  //   });
+      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+      aiResetTimeout.current = setTimeout(() => {
+        setEmotion("neutral");
+      }, 1000);
+    });
 
-  //   return () => {
-  //     if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
-  //   };
-  // }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
+    return () => {
+      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+    };
+  }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
 
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
