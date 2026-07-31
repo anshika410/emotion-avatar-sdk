@@ -58,7 +58,7 @@ import type { EmotionLabel } from "../../types/emotion";
 /** Flip on only for local debugging — these log full score distributions
  * (JSON.stringify of up to 28 labels) on every call, which is itself a
  * measurable source of lag if left on in a live stream. */
-const DEBUG_LOGGING = true;
+const DEBUG_LOGGING = false;
 
 /**
  * predictTopK slices its sorted result to this many entries. We want the

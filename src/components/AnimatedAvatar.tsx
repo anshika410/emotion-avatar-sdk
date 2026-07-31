@@ -77,10 +77,10 @@ export function AnimatedAvatar({
     const wordCount = userMessageInterim.trim().split(/\s+/).length;
     const charCount = userMessageInterim.length;
 
-    console.log(`\nINTERIM TRANSCRIPT`)
+    // console.log(`\nINTERIM TRANSCRIPT`)
     if (wordCount > 2 || charCount > 16) {
       analyzeEmotion(userMessageInterim).then((detected: string) => {
-        console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
+        // console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
         setEmotion(detected);
       }
       );
@@ -104,12 +104,12 @@ export function AnimatedAvatar({
   // User Final Message: Triggered when sentence/turn completes, returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
-    console.log(`\nFINAL TRANSCRIPT`)
+    // console.log(`\nFINAL TRANSCRIPT`)
     const processFinalEmotion = async () => {
       const detected = await analyzeEmotion(userMessageFinal, true, true);
       // Display the detected emotion
       setEmotion(detected);
-      console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
+      // console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
 
       // Clear any previous final reset timeout
       if (finalResetTimeout.current) {
@@ -149,12 +149,12 @@ export function AnimatedAvatar({
             width: loadingSize,
             height: loadingSize,
             borderRadius: "200px",
-            background: "#ffffff",
+            background: "#FFFFFF",
             display: "flex",
-            alignItems: "center",
+            alignItems: "self-end",
             justifyContent: "center",
             boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-            border: "2px solid #e2e8f0",
+            border: "2px solid #E2E8F0",
             position: "relative",
             overflow: "hidden",
           }}
@@ -171,36 +171,43 @@ export function AnimatedAvatar({
               opacity: 0.9,
             }}
           />
-          {/* Subtle loading indicator overlay */}
+          {/* Animated green dots loading indicator */}
           <div
             style={{
               position: "absolute",
-              bottom: "8px",
+              bottom: "12px",
               left: "50%",
               transform: "translateX(-50%)",
-              width: loadingSize * 0.4,
-              height: "3px",
-              background: "#e2e8f0",
-              borderRadius: "2px",
-              overflow: "hidden",
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
             }}
           >
-            <div
-              style={{
-                width: "40%",
-                height: "100%",
-                background: "#4f9eed",
-                borderRadius: "2px",
-                animation: "avatar-loading-slide 1.5s ease-in-out infinite",
-              }}
-            />
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "50%",
+                  background: "#22C55E",
+                  animation: "avatar-dot-bounce 1.4s ease-in-out infinite",
+                  animationDelay: `${index * 0.2}s`,
+                }}
+              />
+            ))}
           </div>
           <style>
             {`
-              @keyframes avatar-loading-slide {
-                0% { transform: translateX(-100%); }
-                50% { transform: translateX(200%); }
-                100% { transform: translateX(400%); }
+              @keyframes avatar-dot-bounce {
+                0%, 80%, 100% {
+                  transform: translateY(0) scale(1);
+                  opacity: 0.6;
+                }
+                40% {
+                  transform: translateY(-12px) scale(1.2);
+                  opacity: 1;
+                }
               }
             `}
           </style>

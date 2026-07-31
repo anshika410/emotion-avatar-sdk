@@ -227,7 +227,7 @@ export function useAvatarController({
 
       try {
         const signals = await processAndClassify(text, bypassChunkSizeGate, bypassBuffer);
-        console.log(`[useAvatarController] Emotion received: ${signals.modelEmotion}`)
+        // console.log(`[useAvatarController] Emotion received: ${signals.modelEmotion}`)
         let state: string;
         if (signals?.modelEmotion) {
           state = signals.modelEmotion;
