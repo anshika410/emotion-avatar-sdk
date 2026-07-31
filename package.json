@@ -1,6 +1,6 @@
 {
   "name": "emotion-avatar-sdk",
-  "version": "0.1.2",
+  "version": "0.1.1",
   "description": "Real-time animated avatar SDK with emotion detection and avatar rendering",
   "type": "module",
   "main": "./dist/index.cjs",
