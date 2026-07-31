@@ -1,3 +1,4 @@
+// emotion-sdk-v0.1.2\src\components\AvatarRenderer.tsx
 import React from "react";
 import { getMascotAssetUrl } from "../constants/emotionAssets";
 
@@ -25,7 +26,7 @@ export function AvatarRenderer({
     justifyContent: "center",
     overflow: "hidden",
     backgroundColor: "#ffffff",
-    borderRadius: "16px",
+    borderRadius: "200px",
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
   };
 

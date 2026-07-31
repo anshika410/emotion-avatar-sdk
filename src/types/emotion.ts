@@ -1,3 +1,4 @@
+// emotion-sdk-v0.1.2\src\types\emotion.ts
 /**
  * Emotion types for the mascot avatar animation system.
  * 6 deterministic animation states driven by text-based emotion analysis.

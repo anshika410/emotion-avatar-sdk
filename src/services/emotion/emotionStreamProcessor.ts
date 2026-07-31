@@ -58,7 +58,7 @@ import type { EmotionLabel } from "../../types/emotion";
 /** Flip on only for local debugging — these log full score distributions
  * (JSON.stringify of up to 28 labels) on every call, which is itself a
  * measurable source of lag if left on in a live stream. */
-const DEBUG_LOGGING = false;
+const DEBUG_LOGGING = true;
 
 /**
  * predictTopK slices its sorted result to this many entries. We want the
@@ -390,8 +390,8 @@ function applyLexicalCorrection(
  * clause, not just the first one. That's what actually stops "resent on
  * every keystroke after the first send" chattiness.
  */
-const MIN_CHUNK_WORDS = 3; // "words > 2"
-const MIN_CHUNK_CHARS = 16; // "characters > 15"
+const MIN_CHUNK_WORDS = 2; // "words > 2"
+const MIN_CHUNK_CHARS = 12; // "characters > 15"
 /** Cap on the chunk->scores cache so it can't grow unbounded over a long call. */
 const CHUNK_SCORE_CACHE_LIMIT = 40;
 
@@ -527,7 +527,7 @@ const SMOOTHING_WINDOW = 3;
  * emotional reversal could fail to cross this threshold because the
  * smoothed history is still weighted toward the pre-contrast emotion.
  */
-const EMOTION_SWITCH_THRESHOLD = 0.05;
+const EMOTION_SWITCH_THRESHOLD = 0.0001;
 
 /** History of (lexically corrected) emotion scores fed into smoothing. */
 let predictionHistory: Array<Record<string, number>> = [];
@@ -801,6 +801,20 @@ export function resetEmotionProcessing(): void {
   contrastShiftPendingForSegment = false;
   lastSentSegmentText = "";
   chunkScoreCache.clear();
+
+  if (DEBUG_LOGGING) {
+    console.log("[EMOTION PROCESSING] EMOTION PARAMS RESETED")
+    console.log({
+      "predictionHistory":predictionHistory,
+      "lastEmittedEmotion": lastEmittedEmotion,
+      "lastEmittedConfidence": lastEmittedConfidence,
+      "lastTranscript": lastTranscript,
+      "activeSegmentStartIndex": activeSegmentStartIndex,
+      "contrastShiftPendingForSegment": contrastShiftPendingForSegment,
+      "lastSentSegmentText": lastSentSegmentText,
+      "chunkScoreCache": chunkScoreCache
+    })
+  }
 }
 
 // ──────────────────── Public API ────────────────────
@@ -1065,7 +1079,7 @@ export async function processAndClassify(
   }
   lastTranscript = transcript;
   const candidateChunks = decideChunksToFlush(transcript);
-  if (DEBUG_LOGGING) { console.log(`Transcript: "${transcript}"`) }
+  if (DEBUG_LOGGING) { console.log(`\n\n[EMOTION PROCESSING] Transcript: "${transcript}"`) }
 
   // Decide which candidates actually get sent to the model this turn.
   // `segmentComplete` chunks always go. A still-growing tail chunk only
@@ -1086,7 +1100,10 @@ export async function processAndClassify(
     const gatePasses =
       bypassChunkSizeGate ||
       (newWordCount >= MIN_CHUNK_WORDS || newCharCount >= MIN_CHUNK_CHARS);
-    if (!gatePasses) continue;
+    if (!gatePasses) {
+      if (DEBUG_LOGGING) console.log(`[EMOTION PROCESSING] Processing Skipped`)
+      continue
+    };
     markSegmentChunkSent(candidate.text);
     chunksToScore.push(candidate);
   }
@@ -1096,6 +1113,9 @@ export async function processAndClassify(
     // force an early flush. No model call this turn.
     const smoothed = peekSmoothedScores();
     const topTwo = getTopN(smoothed, 2);
+
+    if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Sending last Emitted Emotion`) }
+    
     return {
       ...base,
       modelEmotion: (predictionHistory.length > 0 ? lastEmittedEmotion : null) as EmotionLabel | null,
@@ -1126,6 +1146,7 @@ export async function processAndClassify(
   const chunksScored: string[] = [];
 
   for (const chunk of chunksToScore) {
+    if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Inferencing Model`) }
     const { scores: rawScores, inferenceMs, fromCache } = await scoreChunkWithModel(chunk.text);
     totalInferenceMs += inferenceMs;
     chunksScored.push(chunk.text);
@@ -1145,7 +1166,7 @@ export async function processAndClassify(
     smoothedScores = getSmoothedScores(correctedScores);
 
     if (DEBUG_LOGGING) {
-      console.log(`[emotion] chunk="${chunk.text}" cache=${fromCache}\nraw=`, rawScores, "\ncorrected=", correctedScores);
+      console.log(`[EMOTION PROCESSING] chunk="${chunk.text}" cache=${fromCache}\nraw=`, rawScores, "\ncorrected=", correctedScores);
       console.log(`Emotion Buffer:\n${JSON.stringify(getTopN(smoothedScores, 5))}`)
     }
   }
@@ -1164,6 +1185,10 @@ export async function processAndClassify(
   if (topEmotion === null) {
     emittedEmotion = 'neutral';
     emittedConfidence = 0;
+
+  if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] anyContrastShift detect?: ${anyContrastShift}`) }
+
+
   } else if (anyContrastShift || diff >= EMOTION_SWITCH_THRESHOLD) {
     // Clear winner, or a contrast-triggered shift bypasses the gap
     // requirement entirely — the lexical evidence already tells us an
@@ -1181,6 +1206,8 @@ export async function processAndClassify(
       lastEmittedConfidence = emittedConfidence;
     }
   }
+  
+  if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Sending Emotion: ${emittedEmotion}`) }
 
   return {
     ...base,

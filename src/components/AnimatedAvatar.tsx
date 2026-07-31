@@ -26,7 +26,7 @@ export interface AnimatedAvatarProps {
 }
 
 export function AnimatedAvatar({
-  aiMessage = "",
+  // aiMessage = "",
   userMessageInterim = "",
   userMessageFinal = "",
   isSpeaking = false,
@@ -48,45 +48,52 @@ export function AnimatedAvatar({
     null,
   );
   const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Message deduplication refs to prevent infinite re-analysis loops
-  const lastAnalyzedAiMessage = useRef<string>("");
-  const lastAnalyzedInterim = useRef<string>("");
-  const lastAnalyzedFinal = useRef<string>("");
+  // const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onInitialized?.(isInitialized);
   }, [isInitialized, onInitialized]);
 
   // AI Message: Analyzed when complete AI sentence arrives, returns to neutral after 3.5s pause
-  useEffect(() => {
-    if (!aiMessage || !isInitialized || !isSpeaking) return;
-    if (lastAnalyzedAiMessage.current === aiMessage) return;
+  // useEffect(() => {
+  //   if (!aiMessage || !isInitialized || !isSpeaking) return;
 
-    lastAnalyzedAiMessage.current = aiMessage;
-    analyzeEmotion(aiMessage, true).then((detected: string) => {
-      if (detected) setEmotion(detected);
+  //   analyzeEmotion(aiMessage, true).then((detected: string) => {
+  //     if (detected) setEmotion(detected);
 
-      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
-      aiResetTimeout.current = setTimeout(() => {
-        setEmotion("neutral");
-      }, 1000);
-    });
+  //     if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+  //     aiResetTimeout.current = setTimeout(() => {
+  //       setEmotion("neutral");
+  //     }, 1000);
+  //   });
 
-    return () => {
-      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
-    };
-  }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
+  //   return () => {
+  //     if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+  //   };
+  // }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
 
-  // User Interim Speech/Transcript: Only trigger emotion change on complete sentence boundaries (full stop, ?, !, ;)
-  // Returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
-    if (lastAnalyzedInterim.current === userMessageInterim) return;
 
-    // const trimmed = userMessageInterim.trim();
+    const wordCount = userMessageInterim.trim().split(/\s+/).length;
+    const charCount = userMessageInterim.length;
 
+    if (wordCount > 3 || charCount > 20) {
+      analyzeEmotion(userMessageInterim).then((detected: string) => {
+        console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
+        setEmotion(detected);
+      }
+      );
+    }
+
+    // Restart inactivity timer
+    if (interimResetTimeout.current) {
+      clearTimeout(interimResetTimeout.current);
+    }
+
+    interimResetTimeout.current = setTimeout(() => {
+      resetEmotionProcessing();
+    }, 5000);
     return () => {
       if (interimResetTimeout.current) {
         clearTimeout(interimResetTimeout.current);
@@ -97,14 +104,11 @@ export function AnimatedAvatar({
   // User Final Message: Triggered when sentence/turn completes, returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
-    if (lastAnalyzedFinal.current === userMessageFinal) return;
-
-    lastAnalyzedFinal.current = userMessageFinal;
-
     const processFinalEmotion = async () => {
       const detected = await analyzeEmotion(userMessageFinal, true);
       // Display the detected emotion
       setEmotion(detected);
+      console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
 
       // Clear any previous final reset timeout
       if (finalResetTimeout.current) {
@@ -143,7 +147,7 @@ export function AnimatedAvatar({
           style={{
             width: loadingSize,
             height: loadingSize,
-            borderRadius: "20px",
+            borderRadius: "200px",
             background: "#ffffff",
             display: "flex",
             alignItems: "center",

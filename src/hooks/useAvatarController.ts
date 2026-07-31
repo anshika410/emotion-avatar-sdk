@@ -184,7 +184,7 @@ export function useAvatarController({
     let isCancelled = false;
 
     const timer = setTimeout(() => {
-      warmUpEmotionModel({ useWorkerProxy: true, numThreads: 1 })
+      warmUpEmotionModel({ useWorkerProxy: false, numThreads: 1 })
         .then(() => {
           if (!isCancelled) setIsInitialized(true);
         })
@@ -225,6 +225,7 @@ export function useAvatarController({
 
       try {
         const signals = await processAndClassify(text, bypassChunkSizeGate);
+        console.log(`[useAvatarController] Emotion received: ${signals.modelEmotion}`)
         let state: string;
         if (signals?.modelEmotion) {
           state = signals.modelEmotion;

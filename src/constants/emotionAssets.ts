@@ -1,5 +1,14 @@
-const getAssetUrl = (filename: string): string => {
-  return `/assets/${filename}`;
+// emotion-sdk-v0.1.2/src/constants/emotionAssets.ts
+import { EMOTION_ASSET_DATA } from "./emotionAssetData";
+
+/** Resolves a generated data-URI by its exact on-disk filename (case-sensitive) */
+const asset = (fileKey: string): string => {
+  const uri = EMOTION_ASSET_DATA[fileKey];
+  if (!uri) {
+    console.warn(`[emotion-sdk] Missing generated asset for "${fileKey}" — check public/assets and re-run build:assets`);
+    return EMOTION_ASSET_DATA["neutral"] ?? "";
+  }
+  return uri;
 };
 
 /** Source of Truth mapping: Base mascot asset names */
@@ -22,35 +31,39 @@ export type BaseMascotKey =
   | "neutral"
   | "speaking-sad";
 
-/** WebP image URLs for base mascots resolved via standard ESM URL constructor */
+/**
+ * WebP data URIs for base mascots.
+ * Right-hand side keys must exactly match the on-disk filename (no extension),
+ * casing included — see public/assets for the source of truth.
+ */
 export const BASE_MASCOT_ASSETS: Record<BaseMascotKey, string> = {
-  "love-strong": getAssetUrl("love-strong.webp"),
-  "gentle-love": getAssetUrl("gentle-love.webp"),
-  "happy-strong": getAssetUrl("happy-strong.webp"),
-  "happy-gentle": getAssetUrl("happy-gentle.webp"),
-  thinking: getAssetUrl("thinking.webp"),
-  surprise: getAssetUrl("surprise.webp"),
-  anger: getAssetUrl("anger.webp"),
-  disgust: getAssetUrl("disgust.webp"),
-  fear: getAssetUrl("fear.webp"),
-  "sad-strong": getAssetUrl("sad-strong.webp"),
-  // Additional assets for specific legacy/extended lookups
-  "sad-gentle": getAssetUrl("sad-gentle.webp"),
-  celebration: getAssetUrl("celebration.webp"),
-  shoked: getAssetUrl("shoked.webp"),
-  "speaking-happy": getAssetUrl("speaking-happy.webp"),
-  "speaking-neutral": getAssetUrl("speaking-neutral.webp"),
-  "speaking-sad": getAssetUrl("speaking-sad.webp"),
-  neutral: getAssetUrl("neutral.webp"),
+  "love-strong": asset("Love-Strong"),        // actual file: Love-Strong.webp
+  "gentle-love": asset("gentle-love"),
+  "happy-strong": asset("happy_strong"),      // actual file: happy_strong.webp (underscore)
+  "happy-gentle": asset("happy_gentle"),      // actual file: happy_gentle.webp (underscore)
+  thinking: asset("thinking"),
+  surprise: asset("surprise"),
+  anger: asset("anger"),
+  disgust: asset("disgust"),
+  fear: asset("fear"),
+  "sad-strong": asset("sad-Strong"),          // actual file: sad-Strong.webp
+  "sad-gentle": asset("sad-gentle"),
+  celebration: asset("celebration"),
+  shoked: asset("shoked"),
+  "speaking-happy": asset("speaking_happy"),      // actual file: speaking_happy.webp
+  "speaking-neutral": asset("speaking_neutral"),  // actual file: speaking_neutral.webp
+  // No dedicated "speaking-sad" asset exists on disk — only the gentle speaking variant.
+  "speaking-sad": asset("sad-speaking_gentle"),   // actual file: sad-speaking_gentle.webp
+  neutral: asset("neutral"),
 };
 
-/** Dedicated speaking assets resolved via standard ESM URL constructor */
+/** Dedicated speaking assets. Only 3 speaking states actually exist as separate art. */
 export const SPEAKING_ASSETS = {
-  "speaking-happy": getAssetUrl("speaking-happy.webp"),
-  "speaking-neutral": getAssetUrl("speaking-neutral.webp"),
-  "speaking-sad": getAssetUrl("speaking-sad.webp"),
-  // Fallback for strong sadness when dedicated strong speaking asset is not present
-  "sad-speaking-strong": getAssetUrl("speaking-sad.webp"),
+  "speaking-happy": BASE_MASCOT_ASSETS["speaking-happy"],
+  "speaking-neutral": BASE_MASCOT_ASSETS["speaking-neutral"],
+  "speaking-sad": BASE_MASCOT_ASSETS["speaking-sad"],
+  // No dedicated "strong sadness while speaking" art — falls back to the gentle speaking asset.
+  "sad-speaking-strong": BASE_MASCOT_ASSETS["speaking-sad"],
 };
 
 /** Maps each of the 28 model emotions to its designated speaking asset */
@@ -77,7 +90,7 @@ export const MODEL_EMOTION_TO_SPEAKING_ASSET: Record<string, string> = {
   remorse: SPEAKING_ASSETS["speaking-sad"],
   embarrassment: SPEAKING_ASSETS["speaking-sad"],
 
-  // Strong sadness -> sad-speaking_strong.webp (with fallback)
+  // Strong sadness -> falls back to the gentle speaking asset (no strong variant exists)
   sadness: SPEAKING_ASSETS["sad-speaking-strong"],
   grief: SPEAKING_ASSETS["sad-speaking-strong"],
 
@@ -106,58 +119,46 @@ export const MODEL_EMOTION_TO_SPEAKING_ASSET: Record<string, string> = {
   surprise: SPEAKING_ASSETS["speaking-happy"],
 };
 
-export const MODEL_EMOTIONS_MAP_WITH_BASE_MASCOT_EMOTIONS: Record<
-  string,
-  BaseMascotKey
-> = {
-  // High-energy positive
+export const MODEL_EMOTIONS_MAP_WITH_BASE_MASCOT_EMOTIONS: 
+Record<string, BaseMascotKey> = {
   curiosity: "thinking",
   excitement: "happy-strong",
   joy: "happy-strong",
   pride: "happy-strong",
   amusement: "happy-strong",
 
-  // Gentle positive
   admiration: "happy-gentle",
   approval: "happy-gentle",
   optimism: "happy-gentle",
   relief: "happy-gentle",
   gratitude: "happy-gentle",
 
-  // Love / affection
   love: "love-strong",
   caring: "gentle-love",
   desire: "gentle-love",
 
-  // Neutral / cognitive
   neutral: "neutral",
   confusion: "thinking",
   realization: "surprise",
 
-  // Surprise
   surprise: "surprise",
 
-  // Anger family
   anger: "anger",
   annoyance: "anger",
   disapproval: "disgust",
 
-  // Disgust
   disgust: "disgust",
 
-  // Fear
   fear: "fear",
   nervousness: "fear",
   embarrassment: "fear",
 
-  // Sadness family
   sadness: "sad-gentle",
   disappointment: "sad-gentle",
   grief: "sad-strong",
   remorse: "sad-strong",
 };
 
-/** Alias / legacy reaction ID mappings to model emotion keys */
 const LEGACY_ID_TO_MODEL_EMOTION: Record<string, string> = {
   LISTEN: "neutral",
   listening: "neutral",
@@ -214,45 +215,29 @@ const NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION = Object.fromEntries(
   ]),
 ) as Record<string, string>;
 
-/** Resolves any emotion input to a base mascot key */
 export function resolveBaseMascotKey(emotionInput: string): BaseMascotKey {
   if (!emotionInput) return "neutral";
-
   const normalized = emotionInput.trim().toLowerCase();
   if (!normalized) return "neutral";
-
-  const mascotKey = MODEL_EMOTIONS_MAP_WITH_BASE_MASCOT_EMOTIONS[normalized];
-  if (mascotKey) return mascotKey;
-
-  // Default fallback for unrecognized emotions
-  return "neutral";
+  return MODEL_EMOTIONS_MAP_WITH_BASE_MASCOT_EMOTIONS[normalized] ?? "neutral";
 }
 
-/** Resolves an emotion input and speaking state to the target WebP image URL */
 export function getMascotAssetUrl(
   emotionInput: string,
   isSpeaking: boolean = false,
 ): string {
-  const normalized = emotionInput
-    ? emotionInput.trim().toLowerCase()
-    : "neutral";
+  const normalized = emotionInput ? emotionInput.trim().toLowerCase() : "neutral";
 
   if (isSpeaking) {
-    // Check direct model emotion speaking asset
     if (normalized in MODEL_EMOTION_TO_SPEAKING_ASSET) {
       return MODEL_EMOTION_TO_SPEAKING_ASSET[normalized];
     }
 
-    // Check legacy ID resolved to model emotion
     const legacyEmotion = NORMALIZED_LEGACY_ID_TO_MODEL_EMOTION[normalized];
-    if (
-      legacyEmotion &&
-      legacyEmotion.toLowerCase() in MODEL_EMOTION_TO_SPEAKING_ASSET
-    ) {
+    if (legacyEmotion && legacyEmotion.toLowerCase() in MODEL_EMOTION_TO_SPEAKING_ASSET) {
       return MODEL_EMOTION_TO_SPEAKING_ASSET[legacyEmotion.toLowerCase()];
     }
 
-    // Check base mascot key to default speaking asset
     const baseKey = resolveBaseMascotKey(normalized);
     switch (baseKey) {
       case "happy-strong":
@@ -262,11 +247,10 @@ export function getMascotAssetUrl(
       case "surprise":
       case "celebration":
         return SPEAKING_ASSETS["speaking-happy"];
-
       case "sad-strong":
+        return SPEAKING_ASSETS["sad-speaking-strong"];
       case "sad-gentle":
         return SPEAKING_ASSETS["speaking-sad"];
-
       case "thinking":
       case "anger":
       case "disgust":
@@ -277,7 +261,6 @@ export function getMascotAssetUrl(
     }
   }
 
-  // Idle state: resolve base mascot WebP asset
   const baseKey = resolveBaseMascotKey(normalized);
   return BASE_MASCOT_ASSETS[baseKey] || BASE_MASCOT_ASSETS["neutral"];
 }
