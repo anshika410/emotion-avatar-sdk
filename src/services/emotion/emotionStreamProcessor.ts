@@ -805,7 +805,7 @@ export function resetEmotionProcessing(): void {
   if (DEBUG_LOGGING) {
     console.log("[EMOTION PROCESSING] EMOTION PARAMS RESETED")
     console.log({
-      "predictionHistory":predictionHistory,
+      "predictionHistory": predictionHistory,
       "lastEmittedEmotion": lastEmittedEmotion,
       "lastEmittedConfidence": lastEmittedConfidence,
       "lastTranscript": lastTranscript,
@@ -1095,6 +1095,21 @@ export async function processAndClassify(
       continue;
     }
     const newText = computeAddedText(lastSentSegmentText, candidate.text);
+
+    if (bypassChunkSizeGate) {
+      // Final transcript: force a (re-)score of the current tail text even
+      // when it's identical to what was last sent as an interim chunk. We
+      // still need this pass to get bypassBuffer's non-smoothed corrected
+      // scores — skipping it here (as the old `!newText` check did) is what
+      // silently dropped the final-transcript logic whenever ASR finalized
+      // the same text it had just sent as an interim. A cache hit inside
+      // scoreChunkWithModel makes the redundant case essentially free —
+      // no extra ONNX inference, just a lookup.
+      if (!candidate.text.trim()) continue; // truly nothing to score
+      chunksToScore.push(candidate);
+      continue;
+    }
+
     if (!newText) continue; // nothing new since this segment was last sent
     const newWordCount = extractWords(newText).length;
     const newCharCount = newText.length;
@@ -1115,7 +1130,7 @@ export async function processAndClassify(
     const topTwo = getTopN(smoothed, 2);
 
     if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Sending last Emitted Emotion`) }
-    
+
     return {
       ...base,
       modelEmotion: (predictionHistory.length > 0 ? lastEmittedEmotion : null) as EmotionLabel | null,
@@ -1140,7 +1155,7 @@ export async function processAndClassify(
   }
 
   let smoothedScores: Record<string, number> = peekSmoothedScores();
-  let correctedScores: Record<string, number> = {...smoothedScores}
+  let correctedScores: Record<string, number> = { ...smoothedScores }
   let anyContrastShift = false;
   let totalInferenceMs = 0;
 
@@ -1154,12 +1169,12 @@ export async function processAndClassify(
     chunksScored.push(chunk.text);
 
     // Only now do we know this exact text was actually scored — safe to
-  // advance the tail segment's "last sent" baseline. segmentComplete
-  // chunks never call this (unchanged from before): decideChunksToFlush
-  // already moved the segment boundary for those via startNewSegment.
-  if (!chunk.segmentComplete) {
-    markSegmentChunkSent(chunk.text);
-  }
+    // advance the tail segment's "last sent" baseline. segmentComplete
+    // chunks never call this (unchanged from before): decideChunksToFlush
+    // already moved the segment boundary for those via startNewSegment.
+    if (!chunk.segmentComplete) {
+      markSegmentChunkSent(chunk.text);
+    }
     const chunkAnalysis = analyzeSegment(extractWords(chunk.text));
     correctedScores = applyLexicalCorrection(rawScores, chunkAnalysis);
 
@@ -1178,10 +1193,10 @@ export async function processAndClassify(
       console.log(`Emotion Buffer:\n${JSON.stringify(getTopN(smoothedScores, 5))}`)
     }
   }
-  
+
   if (bypassBuffer) {
     if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Final Transcript; Bypassing Buffer`) }
-    smoothedScores = correctedScores 
+    smoothedScores = correctedScores
   }
 
   const topTwo = getTopN(smoothedScores, 2);
@@ -1199,7 +1214,7 @@ export async function processAndClassify(
     emittedEmotion = 'neutral';
     emittedConfidence = 0;
 
-  if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] anyContrastShift detect?: ${anyContrastShift}`) }
+    if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] anyContrastShift detect?: ${anyContrastShift}`) }
 
 
   } else if (anyContrastShift || diff >= EMOTION_SWITCH_THRESHOLD) {
@@ -1219,7 +1234,7 @@ export async function processAndClassify(
       lastEmittedConfidence = emittedConfidence;
     }
   }
-  
+
   if (DEBUG_LOGGING) { console.log(`[EMOTION PROCESSING] Sending Emotion: ${emittedEmotion}`) }
 
   return {
