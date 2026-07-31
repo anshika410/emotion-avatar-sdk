@@ -1,8 +1,12 @@
+// emotion-sdk-v0.1.2\src\components\AnimatedAvatar.tsx
 import { useEffect, useRef } from "react";
-import { EmotionState } from "../types/emotion";
 import { AvatarRenderer } from "./AvatarRenderer";
-import { useAvatarController } from "../hooks/useAvatarController";
-import { resetEmotionProcessing } from "../services/emotion/textSignals";
+import {
+  useAvatarController,
+  type EmotionDebugInfo,
+} from "../hooks/useAvatarController";
+import { resetEmotionProcessing } from "../services/emotion/emotionStreamProcessor";
+import { BASE_MASCOT_ASSETS } from "../constants/emotionAssets";
 
 export interface AnimatedAvatarProps {
   aiMessage?: string;
@@ -11,6 +15,7 @@ export interface AnimatedAvatarProps {
   isSpeaking?: boolean;
   isListening?: boolean;
   onInitialized?: (isInitialized: boolean) => void;
+  onEmotionDebug?: (info: EmotionDebugInfo) => void;
   /** CSS class for the outer wrapper (layout container) */
   containerClassName?: string;
   /** CSS class for the avatar image (optional) */
@@ -26,33 +31,45 @@ export function AnimatedAvatar({
   isSpeaking = false,
   isListening = false,
   onInitialized,
+  onEmotionDebug,
   containerClassName,
   avatarClassName,
   style,
 }: AnimatedAvatarProps) {
-  const {
-    emotionState,
-    setEmotion,
-    analyzeEmotion,
-    isInitialized,
-    resolvedBlobImages,
-  } = useAvatarController({
-    isSpeaking,
-    isListening,
-  });
+  const { emotionId, setEmotion, analyzeEmotion, isInitialized } =
+    useAvatarController({
+      isSpeaking,
+      isListening,
+      onEmotionDebug,
+    });
 
-  const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interimResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const finalResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onInitialized?.(isInitialized);
   }, [isInitialized, onInitialized]);
 
+  // AI Message: Analyzed when complete AI sentence arrives, returns to neutral after 3.5s pause
   useEffect(() => {
-    if (aiMessage && isInitialized && isSpeaking) {
-      setEmotion(EmotionState.SPEAK_NEUTRAL);
-    }
-  }, [aiMessage, isInitialized, analyzeEmotion, setEmotion]);
+    if (!aiMessage || !isInitialized || !isSpeaking) return;
+
+    analyzeEmotion(aiMessage, true).then((detected: string) => {
+      if (detected) setEmotion(detected);
+
+      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+      aiResetTimeout.current = setTimeout(() => {
+        setEmotion("neutral");
+      }, 1000);
+    });
+
+    return () => {
+      if (aiResetTimeout.current) clearTimeout(aiResetTimeout.current);
+    };
+  }, [aiMessage, isInitialized, isSpeaking, analyzeEmotion, setEmotion]);
 
   useEffect(() => {
     if (!userMessageInterim || !isInitialized) return;
@@ -60,9 +77,12 @@ export function AnimatedAvatar({
     const wordCount = userMessageInterim.trim().split(/\s+/).length;
     const charCount = userMessageInterim.length;
 
-    if (wordCount > 3 || charCount > 20) {
-      analyzeEmotion(userMessageInterim).then((detected: EmotionState) =>
-        setEmotion(detected)
+    // console.log(`\nINTERIM TRANSCRIPT`)
+    if (wordCount > 2 || charCount > 16) {
+      analyzeEmotion(userMessageInterim).then((detected: string) => {
+        // console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
+        setEmotion(detected);
+      }
       );
     }
 
@@ -74,34 +94,33 @@ export function AnimatedAvatar({
     interimResetTimeout.current = setTimeout(() => {
       resetEmotionProcessing();
     }, 5000);
-
     return () => {
       if (interimResetTimeout.current) {
         clearTimeout(interimResetTimeout.current);
       }
     };
-
   }, [userMessageInterim, isInitialized, analyzeEmotion, setEmotion]);
 
-
+  // User Final Message: Triggered when sentence/turn completes, returns to neutral emotion after a long pause (3.5 seconds)
   useEffect(() => {
     if (!userMessageFinal || !isInitialized) return;
-
+    // console.log(`\nFINAL TRANSCRIPT`)
     const processFinalEmotion = async () => {
-      const detected = await analyzeEmotion(userMessageFinal);
-
+      const detected = await analyzeEmotion(userMessageFinal, true, true);
       // Display the detected emotion
       setEmotion(detected);
+      // console.log(`[AnimatedAvater] Emotion Received at END: ${detected}`)
 
       // Clear any previous final reset timeout
       if (finalResetTimeout.current) {
         clearTimeout(finalResetTimeout.current);
       }
 
-      // Delay the reset by 1 second so the user can see the final emotion
+      // After long pause (3.5 seconds), return back to neutral emotion ("neutral")
       finalResetTimeout.current = setTimeout(() => {
         resetEmotionProcessing();
-      }, 1000);
+        // setEmotion("neutral");
+      }, 2000);
     };
 
     processFinalEmotion();
@@ -113,8 +132,8 @@ export function AnimatedAvatar({
     };
   }, [userMessageFinal, isInitialized, analyzeEmotion, setEmotion]);
 
-  // Loading state
-  if (!isInitialized || !resolvedBlobImages) {
+  // Loading state - show default WebP image while dependencies load
+  if (!isInitialized) {
     const loadingSize = 260; // fallback size
     return (
       <div
@@ -129,30 +148,66 @@ export function AnimatedAvatar({
           style={{
             width: loadingSize,
             height: loadingSize,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, #e0e0e0 40%, #f8f8f8 100%)",
+            borderRadius: "200px",
+            background: "#FFFFFF",
             display: "flex",
-            alignItems: "center",
+            alignItems: "self-end",
             justifyContent: "center",
-            boxShadow: "0 1px 8px rgba(82,82,82,0.06)",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
+            border: "2px solid #E2E8F0",
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          <div
+          {/* Default WebP loading image */}
+          <img
+            src={BASE_MASCOT_ASSETS.neutral}
+            alt="Loading avatar"
             style={{
-              width: loadingSize * 0.32,
-              height: loadingSize * 0.32,
-              border: `${Math.max(2, loadingSize * 0.036)}px solid #9993`,
-              borderTop: `${Math.max(2, loadingSize * 0.036)}px solid #4f9eed`,
-              borderRadius: "50%",
-              animation: "avatar-spin 1s linear infinite",
-              boxSizing: "border-box",
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              padding: "8px",
+              opacity: 0.9,
             }}
           />
+          {/* Animated green dots loading indicator */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "12px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
+            }}
+          >
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "50%",
+                  background: "#22C55E",
+                  animation: "avatar-dot-bounce 1.4s ease-in-out infinite",
+                  animationDelay: `${index * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
           <style>
             {`
-              @keyframes avatar-spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+              @keyframes avatar-dot-bounce {
+                0%, 80%, 100% {
+                  transform: translateY(0) scale(1);
+                  opacity: 0.6;
+                }
+                40% {
+                  transform: translateY(-12px) scale(1.2);
+                  opacity: 1;
+                }
               }
             `}
           </style>
@@ -165,8 +220,8 @@ export function AnimatedAvatar({
   return (
     <div className={containerClassName}>
       <AvatarRenderer
-        emotionState={emotionState}
-        emotionImages={resolvedBlobImages}
+        emotionId={emotionId}
+        isSpeaking={isSpeaking}
         className={avatarClassName}
         style={style}
       />

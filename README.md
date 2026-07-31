@@ -1,31 +1,31 @@
 # emotion-avatar-sdk
 
-A React SDK for rendering a real-time animated avatar with emotion-aware animations.
-
-The SDK automatically updates avatar expressions based on conversation state, AI responses, and user transcripts. Emotion detection runs entirely in the browser using an on-device Hugging Face model, requiring no backend service.
+A React SDK that renders a real‑time, emotion‑aware animated avatar.  
+The avatar’s expression automatically updates based on conversation state, AI responses, and user transcripts.  
+Emotion detection runs **entirely in the browser** using an on‑device ONNX model – no backend is required.
 
 ---
 
 ## Features
 
-- Real-time avatar animation
-- Automatic emotion detection from user transcripts
-- On-device inference using Hugging Face Transformers
-- Works with any Speech-to-Text (STT), Text-to-Speech (TTS), or LLM pipeline
-- Built-in avatar assets and emotion handling
-- Easy customization using CSS classes or inline styles
+- 🎭 Real‑time avatar animation  
+- 🔍 Automatic emotion detection from user transcripts  
+- ⚡ On‑device inference (ONNX + Hugging Face tokenizer)  
+- 🔌 Works with any STT, TTS, or LLM pipeline  
+- 🖼️ All avatar assets are **embedded in the bundle** – no external image loading  
+- 🎨 Easy styling via CSS classes or inline styles  
 
 ---
 
 ## Installation
 
-Install the SDK:
-
 ```bash
 npm install emotion-avatar-sdk
 ```
 
-Install the required peer dependencies if they are not already available in your application.
+The SDK uses `react` and `react-dom` (peer dependencies) as well as  
+`@huggingface/transformers` and `onnxruntime-web`.  
+If they aren’t already installed, add them to your project:
 
 ```bash
 npm install react react-dom @huggingface/transformers onnxruntime-web
@@ -35,19 +35,17 @@ npm install react react-dom @huggingface/transformers onnxruntime-web
 
 ## Quick Start
 
-Import the component and provide your application's conversation state.
-
 ```tsx
 import { AnimatedAvatar } from "emotion-avatar-sdk";
 
-function App() {
+function ChatInterface() {
   return (
     <AnimatedAvatar
-      aiMessage={aiMessage}
-      userMessageInterim={interimText}
-      userMessageFinal={finalText}
-      isSpeaking={isPlaying}
-      isListening={isListening}
+      aiMessage={currentAiText}
+      userMessageInterim={liveTranscript}
+      userMessageFinal={finalTranscript}
+      isSpeaking={aiIsSpeaking}
+      isListening={userIsSpeaking}
     />
   );
 }
@@ -55,96 +53,48 @@ function App() {
 
 The SDK automatically:
 
-- Initializes the emotion model
-- Loads avatar assets
-- Detects emotions from transcripts
-- Updates avatar expressions
-- Handles listening and speaking states
+- Initializes the emotion model (download, cache, and warm‑up)  
+- Detects emotions from transcripts  
+- Updates the avatar expression in real time  
+- Handles speaking and listening states  
+
+> While the model loads, a **loading indicator** is shown – no extra code required.
 
 ---
 
-# Integration Guide
+## Integration Guide
 
-The component expects the following values from your application.
+Provide these values from your application:
 
-| Prop                 | Description                                                 |
-| -------------------- | ----------------------------------------------------------- |
-| `aiMessage`          | Current AI response text.                                   |
-| `userMessageInterim` | Live or partial transcript from your Speech-to-Text system. |
-| `userMessageFinal`   | Final transcript after speech completion.                   |
-| `isSpeaking`         | Set to `true` while Text-to-Speech is speaking.             |
-| `isListening`        | Set to `true` while Speech-to-Text is listening.            |
+| Prop                 | Description                                              |
+| -------------------- | -------------------------------------------------------- |
+| `aiMessage`          | Current AI response text                                 |
+| `userMessageInterim` | Live/partial transcript from your STT system             |
+| `userMessageFinal`   | Final transcript after the user stops speaking           |
+| `isSpeaking`         | `true` while the AI is speaking (TTS active)             |
+| `isListening`        | `true` while the user is speaking (STT listening)        |
 
-Example:
+### Transcript Handling
 
-```tsx
-<AnimatedAvatar
-  aiMessage={aiMessage}
-  userMessageInterim={interimText}
-  userMessageFinal={finalText}
-  isSpeaking={isPlaying}
-  isListening={isListening}
-/>
-```
+The SDK supports three common workflows:
 
----
-
-## Transcript Handling
-
-The SDK supports multiple Speech-to-Text workflows.
-
-### Live Transcript Only
-
-Use only `userMessageInterim` if your application continuously streams transcript updates.
-
-### Final Transcript Only
-
-Use only `userMessageFinal` if your application provides the transcript after speech is completed.
-
-### Live + Final Transcript (Recommended)
-
-Provide both `userMessageInterim` and `userMessageFinal`.
-
-This allows the avatar to respond immediately to live speech while updating with the final detected emotion once the transcript is finalized.
+- **Live only** – pass `userMessageInterim` continuously  
+- **Final only** – pass `userMessageFinal` after the utterance completes  
+- **Both (recommended)** – pass both props for immediate reactions and accurate final emotions  
 
 ---
 
 ## Styling
 
-The SDK exposes styling hooks so the avatar can match your application's design.
-
-### Container Styling
-
-Apply styles to the outer container.
-
-```tsx
-<AnimatedAvatar containerClassName="rounded-xl border shadow-lg" />
-```
-
-### Avatar Styling
-
-Apply styles directly to the avatar image.
-
-```tsx
-<AnimatedAvatar avatarClassName="rounded-full" />
-```
-
-### Inline Styling
-
-Apply inline styles directly to the avatar.
+Match the avatar to your design with three styling hooks:
 
 ```tsx
 <AnimatedAvatar
-  style={{
-    width: "180px",
-    height: "180px",
-    borderRadius: "20px",
-    opacity: 1,
-  }}
+  containerClassName="rounded-xl border shadow-lg"   // outer wrapper
+  avatarClassName="rounded-full"                      // the <img> element
+  style={{ width: "180px", height: "180px" }}         // inline styles (highest priority)
 />
 ```
-
-> **Note:** Inline styles have the highest priority and override any styles applied through CSS classes.
 
 ---
 
@@ -152,44 +102,74 @@ Apply inline styles directly to the avatar.
 
 | Prop                 | Type                             | Default     | Description                                                 |
 | -------------------- | -------------------------------- | ----------- | ----------------------------------------------------------- |
-| `aiMessage`          | `string`                         | `""`        | Current AI response.                                        |
-| `userMessageInterim` | `string`                         | `""`        | Live or partial transcript.                                 |
-| `userMessageFinal`   | `string`                         | `""`        | Final transcript.                                           |
-| `isSpeaking`         | `boolean`                        | `false`     | Indicates whether the AI is currently speaking.             |
-| `isListening`        | `boolean`                        | `false`     | Indicates whether the application is currently listening.   |
-| `containerClassName` | `string`                         | `undefined` | CSS class applied to the avatar container.                  |
-| `avatarClassName`    | `string`                         | `undefined` | CSS class applied to the avatar image.                      |
-| `style`              | `React.CSSProperties`            | `undefined` | Inline styles applied to the avatar image.                  |
-| `onInitialized`      | `(initialized: boolean) => void` | `undefined` | Callback invoked once the SDK has completed initialization. |
+| `aiMessage`          | `string`                         | `""`        | Current AI response                                         |
+| `userMessageInterim` | `string`                         | `""`        | Live/partial transcript                                     |
+| `userMessageFinal`   | `string`                         | `""`        | Final transcript                                            |
+| `isSpeaking`         | `boolean`                        | `false`     | AI is currently speaking (TTS active)                       |
+| `isListening`        | `boolean`                        | `false`     | User is speaking (STT listening)                            |
+| `containerClassName` | `string`                         | `undefined` | CSS class for the outer wrapper                             |
+| `avatarClassName`    | `string`                         | `undefined` | CSS class for the avatar image                              |
+| `style`              | `React.CSSProperties`            | `undefined` | Inline styles (merged with default)                         |
+| `onInitialized`      | `(initialized: boolean) => void` | `undefined` | Called when the emotion model is ready                      |
+| `onEmotionDebug`     | `(info: EmotionDebugInfo) => void`| `undefined` | Debug callback – fires after each emotion analysis          |
+
+---
+
+## How It Works – At a Glance
+
+1. **Transcript arrives** → rule‑based analysis extracts valence and keyword cues  
+2. **Stream buffer** decides when enough new text has accumulated to call the model  
+3. **ONNX inference** runs an encoder‑classifier model (28 emotion labels)  
+4. **Lexical correction** adjusts scores for negation and contrast (e.g. “not disappointed”)  
+5. **Smoothing** blends the last few predictions to avoid flickering  
+6. **Emotion mapping** resolves the top label into a base mascot key, then picks the correct speaking/static image – all from bundled data‑URIs
+
+---
+
+## Asset Management – No Setup Required
+
+Avatar images are **compiled directly into the SDK** as base64 strings.  
+There is **no** `public/assets` folder to copy, no runtime image downloads, and no fallback logic to configure.  
+Everything works out of the box.
+
+---
+
+## Peer Dependencies
+
+Make sure these are installed in your project:
+
+- `react` ≥ 18  
+- `react-dom` ≥ 18  
+- `@huggingface/transformers` (for the tokenizer)  
+- `onnxruntime-web` (for inference)
 
 ---
 
 ## Responsibilities
 
-### Provided by the SDK
+### ✅ SDK Responsibilities
 
-- Avatar rendering
-- Emotion detection
-- Emotion-aware avatar animations
-- Model initialization
-- Asset loading and management
+- Avatar rendering and animation  
+- Emotion detection (rule‑based + ONNX model)  
+- Model loading, caching, and warm‑up  
+- Asset management (images embedded in bundle)  
 
-### Expected from the Consumer Application
+### 🧩 Consumer Responsibilities
 
-- Speech-to-Text integration
-- Text-to-Speech integration
-- LLM or chatbot integration
-- Conversation state management
-- Chat interface
+- Speech‑to‑Text integration  
+- Text‑to‑Speech integration  
+- LLM / chatbot integration  
+- Conversation state management  
+- Chat UI layout  
 
 ---
 
-## Documentation
+## Further Reading
 
-The SDK architecture, implementation details, and package structure are documented separately in **`PACKAGE_ARCHITECTURE.md`**.
+Detailed architecture, the full emotion pipeline, and the emotion‑to‑mascot mapping are documented in **`PACKAGE_ARCHITECTURE.md`** (available in the repository).
 
 ---
 
 ## License
 
-AGPL-3.0-or-later
+AGPL‑3.0‑or‑later
