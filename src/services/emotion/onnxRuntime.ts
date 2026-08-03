@@ -135,7 +135,7 @@ export interface ONNXEmotionModelOptions {
   maxQueueDepth?: number;
 }
 
-const DEFAULT_REPO_ID = "YashM21/Encoder-Decoder-INT4";
+const DEFAULT_REPO_ID = "navgurukul-ai/realtime-avatar-animation";
 const DEFAULT_ENCODER_PATH = "onnx/embedder_v2b_q4.onnx";
 const DEFAULT_CLASSIFIER_PATH = "head_goemotions.onnx";
 const DEFAULT_THRESHOLDS_PATH = "thresholds.json";
@@ -294,7 +294,7 @@ export class ONNXEmotionModel {
         : 4;
     ort.env.wasm.numThreads = options.numThreads ?? defaultThreads;
     ort.env.wasm.simd = true;
-    ort.env.wasm.proxy = options.useWorkerProxy ?? false
+    ort.env.wasm.proxy = options.useWorkerProxy ?? false;
 
     if (options.wasmPaths) {
       ort.env.wasm.wasmPaths = options.wasmPaths;
@@ -384,25 +384,28 @@ export class ONNXEmotionModel {
   }
 
   async init(): Promise<void> {
-  if (this.disposed) throw new Error("ONNXEmotionModel has been disposed; create a new instance.");
-  if (this.initialized) return;
-  if (this.initPromise) return this.initPromise;
-
-  this.initPromise = this.doInit().catch(async (err) => {
-    if (ort.env.wasm.proxy) {
-      console.warn(
-        "[ONNXEmotionModel] Worker-proxy WASM init failed, retrying on main thread:",
-        err,
+    if (this.disposed)
+      throw new Error(
+        "ONNXEmotionModel has been disposed; create a new instance.",
       );
-      ort.env.wasm.proxy = false;
-      this.initPromise = null;
-      return this.init();
-    }
-    throw err;
-  });
+    if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
 
-  return this.initPromise;
-}
+    this.initPromise = this.doInit().catch(async (err) => {
+      if (ort.env.wasm.proxy) {
+        console.warn(
+          "[ONNXEmotionModel] Worker-proxy WASM init failed, retrying on main thread:",
+          err,
+        );
+        ort.env.wasm.proxy = false;
+        this.initPromise = null;
+        return this.init();
+      }
+      throw err;
+    });
+
+    return this.initPromise;
+  }
 
   async warmUp(
     sampleText = "This is a warm up sentence to initialize the model.",
