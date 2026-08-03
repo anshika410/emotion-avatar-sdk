@@ -26,6 +26,7 @@ export function AvatarRenderer({
     justifyContent: "center",
     overflow: "hidden",
     backgroundColor: "#ffffff",
+    borderRadius: "200px",
   };
 
   const mergedStyle = { ...defaultContainerStyle, ...userStyle };

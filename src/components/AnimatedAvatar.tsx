@@ -153,8 +153,6 @@ export function AnimatedAvatar({
             display: "flex",
             alignItems: "self-end",
             justifyContent: "center",
-            boxShadow: "0 4px 15px rgba(0,0,0,0.15)",
-            border: "2px solid #E2E8F0",
             position: "relative",
             overflow: "hidden",
           }}
